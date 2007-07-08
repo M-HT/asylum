@@ -1,0 +1,32 @@
+SDL Asylum
+==========
+
+Young Sigmund has a few problems. To help him resolve his mental instability
+you must enter the surreal world of his inner mind and shut down the
+malfunctioning brain cells. 
+
+A port of Andy Southgate's 1994 platform shooter for the Acorn Archimedes.
+
+Installation
+============
+
+	sudo make install
+
+You'll need SDL and SDL_mixer.  If you don't have (or don't want to be) root,
+modify the Makefile to point at directories you have write access to.
+
+Instructions
+============
+
+See the file 'Instruct' for the instructions included with the original game.
+Since they're remarkably little help, let me add that the default keys are
+Z, X, ;, . and that pressing the Down key when standing on a teleporter
+enables you to teleport.
+
+Licensing
+=========
+
+SDL Asylum is distributed under GPL version 3.  The original game music
+and graphics are © Andy Southgate 1993, and were placed in the public domain
+by Andy Southgate in 2002.
+

@@ -216,7 +216,7 @@ bulent bulofs[_bullim];
 
 //soundtabofs=&A900:REM length 8*16
 #define _savearealen (0x9c0/32)
-alent saveareaalents[_savearealen]; // &C000
+alent saveareaalents[_savearealen+1]; // &C000
 int saveareaints[8];
 char highscorearea[13*5+1];//=&D000
 char wipescrst[128*16*4];//=&D100
@@ -1599,14 +1599,14 @@ alent* r11=aladr;
 for (int r9=_alno; r9>0; r9--)
   {
   procsaveal:
-  if (r11->type==0) continue;
-  if (r10b>=r7)  continue;
+  if (r10b>=r7)  break;
   switch(r11->type)
     {
     case _Explo:  //don't save these
     case _Scoreobj:
     case _Flyingbonus:
     case _Dyingbonus:
+    case 0:
       r11++; break;
     default:
       *r10b=*r11;

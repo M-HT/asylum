@@ -322,7 +322,7 @@ char keypressed, blamctr, rocketblamctr, plotterofs, hiddenplatctr, extending;
 char charsok, arm3, gameon, savestart;
 int leftkey, rightkey, upkey, downkey, firekey;
 char soundtype, soundquality, explospeed, gearchange;
-char fullscreen;
+char fullscreen, sound_available;
 char soundvol, musicvol, joyno, mentalzone, saveend, savedornot;
 char bonusstore, plweaponstore;
 char hstindex, idpermit, cheatpermit;
@@ -613,11 +613,16 @@ void switchfspbank() {swi_fastspr_screenbank(bank);}
 
 void bidforsoundforce(int r0,char r1,char r2,int r3,int r4,int r5,char r6,int r7,Mix_Chunk* chunk)
 {
+if (sound_available&&soundtype)
+{
 r0&=7;
 soundclaim(r0,r1,r2,r3,r4,r5,r6,r7,chunk);
 }
+}
 
 void bidforsound(int r0,char r1,char r2,int r3,int r4,int r5,char r6,int r7,Mix_Chunk* chunk)
+{
+if (sound_available&&soundtype)
 {
 r0&=7;
 //soundtab=soundtabofs+(r0<<soundtabshift);
@@ -632,6 +637,7 @@ else if ((!Mix_Playing(5))||(Mix_GetChunk(5)->volume<r2)) soundclaim(5,r1,r2,r3,
 else if ((!Mix_Playing(6))||(Mix_GetChunk(6)->volume<r2)) soundclaim(6,r1,r2,r3,r4,r5,r6,r7,chunk);
 else if ((!Mix_Playing(7))||(Mix_GetChunk(7)->volume<r2)) soundclaim(7,r1,r2,r3,r4,r5,r6,r7,chunk);
 return;
+}
 }
 
 void showtext()
@@ -4964,16 +4970,27 @@ void tunegame()
 wipetexttab();
 showchatscreen();
  message(96,48,0,0,"Tune Game");
+ if (sound_available) {
  message(64,96,0,0,"1. Sound System");
  message(64,128,0,0,"2. Sound Volume");
+ }
+ else {
+ message(48,96,0,0,"\x11");
+ message(48,128,0,0,"\x11");
+ message(64,96,0,0,"1.");
+ message(64,128,0,0,"2.");
+ message(115,101,0,0,"Sound Not");
+ message(112,123,0,0,"Available");
+ }
  message(64,160,0,0,"3. Video System");
 showtext();
+while (1)
 switch (readopt(3))
 {
 case -1: return;
-case  1: tunesound(); break;
-case  2: tunevolume(); break;
-case  3: tunespeed(); break;
+case  1: if (sound_available) {tunesound(); return;} else break;
+case  2: if (sound_available) {tunevolume(); return;} else break;
+case  3: tunespeed(); return;
 }
 }
 
@@ -6352,7 +6369,8 @@ void init_sounds() {
 
 void c_array_initializers() {
   init_projsplittab(); init_rocketbursttab(); init_alspintab(); init_strengthcol(); init_rockettab();
-  init_palette(); init_sounds(); init_splittab();
+  init_palette(); init_splittab();
+  if (sound_available) init_sounds();
   for (int i=0;i<256;i++) keyboard[i]=0;
 }
 
@@ -6360,9 +6378,9 @@ int main()
 {
   chdir(RESOURCEPATH);
   load_voices();
-  c_array_initializers();
  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
- Mix_OpenAudio(22050,AUDIO_U16LSB,2,1024);
+ sound_available=!Mix_OpenAudio(22050,AUDIO_U16LSB,2,1024);
+  c_array_initializers();
    printf("%s\n",Mix_GetError());
 /*MODE 15
 MODE 13
@@ -6430,6 +6448,7 @@ strncpy(r11->text,b,60);
 
 
 void swi_bodgemusic_start(int a,int b) {
+ if (!sound_available) return;
  swi_bodgemusic_stop();
  swi_sound_qtempo(0x1000);
  music.time=0;
@@ -6439,7 +6458,7 @@ void swi_bodgemusic_start(int a,int b) {
  for (int v=0;v<4;v++) {music.pitch[v]=0; music.inst[v]=0; music.start_time[v]=0;}
  Mix_HookMusic(sdl_music_hook, &music);
 }
-void swi_bodgemusic_stop() { Mix_HaltMusic(); Mix_HookMusic(NULL,NULL); }
+void swi_bodgemusic_stop() { if (sound_available) {Mix_HaltMusic(); Mix_HookMusic(NULL,NULL);} }
 void swi_bodgemusic_volume(int v) {;}
 void swi_bodgemusic_load(int a,char* b) {
  SDL_RWops* tune = SDL_RWFromFile(b, "r");

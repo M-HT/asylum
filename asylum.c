@@ -26,17 +26,17 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-char keyboard[256];
-char keybuf;
+char keyboard[512];
+int keybuf;
 int mouse;
 
-#define ESC_VALUE 9
+#define ESC_VALUE 27
 
 #ifndef RESOURCEPATH
-#define RESOURCEPATH "."
+#define RESOURCEPATH "./data"
 #endif
 #ifndef SCOREPATH
-#define SCOREPATH "."
+#define SCOREPATH "./hiscores"
 #endif
 
 #define random rand
@@ -3052,16 +3052,16 @@ bonustimer=0;
 void zonecheatread()
 {
   char r1=osbyte_7a(); // was _81(0)
-if ((r1<10)||(r1>19)||(r1==18)) return;
-plzone=((r1==19)?0:r1-9);
+if ((r1<48)||(r1>56)) return;
+plzone=r1-48;
 }
 
 void cheatread()
 {
-if (osbyte_81(-67)==0xff) getmpmg();
-if (osbyte_81(-68)==0xff) getrocket();
-if (osbyte_81(-70)==0xff) screensave();
-if (osbyte_81(-69)==0xff) prepstrength();
+if (osbyte_81(-282)==0xff) getmpmg();
+if (osbyte_81(-283)==0xff) getrocket();
+if (osbyte_81(-285)==0xff) screensave();
+if (osbyte_81(-284)==0xff) prepstrength();
 }
 
 
@@ -4565,9 +4565,9 @@ swi_fastspr_clearwindow();
 texthandler();
 }
 esctextstop:
- if (osbyte_81(-24/*-17*/)) {loselife(); return 0;}
- if (osbyte_81(-32/*-55*/)) {adjustopt(); return 0;}
- if (osbyte_81(-27/*-52*/)) {rejoin(); return 0;}
+ if (osbyte_81(-113)) {loselife(); return 0;}
+ if (osbyte_81(-111)) {adjustopt(); return 0;}
+ if (osbyte_81(-114)) {rejoin(); return 0;}
 }
 osbyte_7c();
 return 1;
@@ -4749,13 +4749,14 @@ decompdone:;
 void clearkeybuf()
 {
 do clearkbloop:;
- while (osbyte_79(0)!=0xff);
+ while (osbyte_79(0)!=-1);
 do clearkbloop2:;
- while (osbyte_81(1)!=0xff);
+ while (osbyte_81(1)!=-1);
 }
 
 const int keydefs[] =
-  { -52, -53, -47, -60, -36};
+  { -SDLK_z, -SDLK_x, -SDLK_SEMICOLON, -SDLK_PERIOD, -SDLK_RETURN};
+//{ -52, -53, -47, -60, -36};
     //{ 97^0xff, 66^0xff, 79^0xff, 104^0xff, 73^0xff };
 
 void setdefaults()
@@ -5136,7 +5137,7 @@ if (r0==-1) return;
 
 int selectkey(int x,int y,int xv,int yv,char* a)
 {
-char r1, r4;
+int r1;
 wipetexttab();
 showchatscreen();
 clearkeybuf();
@@ -5149,7 +5150,7 @@ do {
   //{ chooseescape: osbyte_7c();
   //return 0;} //early exit
 }
-while ((r1=osbyte_79(0))==0xff); // scan keyboard
+while ((r1=osbyte_79(0))==-1); // scan keyboard
 if (r1==ESC_VALUE) return 0;
 return -r1; // and r4 (?)
 }
@@ -5177,14 +5178,14 @@ return -1;
 }
 if (r1==0) continue;
 if (osbyte_81(firekey)==0xff) {optfire: return 0;}
-r1-=9; // '1' key returns value 10
+r1-=48; // '1' key returns value 49
 } while (!((r1>=0)&&(r1<=maxopt)));
 optexit:
 return r1;
 }
 
-#define _x 250
-#define _v -1
+const int _x=250;
+const int _v=-1;
 
 int prelude()
 {
@@ -5224,8 +5225,8 @@ swi_fastspr_clearwindow();
 texthandler();
 }
  preludetextstop:;
-char r1=osbyte_7a();
-if ((r1!=0xff)&&(r1!=64)&&(r1!=113)) // escape
+int r1=osbyte_7a();
+if ((r1!=-1)&&(r1!=307)&&(r1!=308)) // escape
 {
 endprelude:
 return 0;
@@ -5233,8 +5234,8 @@ return 0;
 if (mouse&2)
 {
 gocheat:
-if (osbyte_81(-64)!=0xff) return 0;
-if (osbyte_81(-113)!=0xff) return 0;
+if (osbyte_81(-307)!=0xff) return 0;
+if (osbyte_81(-308)!=0xff) return 0;
 cheatpermit=1;
 scroll=1024;
 }
@@ -5279,7 +5280,7 @@ if (r0!=NULL)
 idpermit=1;
 }
 char config_keywords[13][12] =
-  {"LeftKey", "RightKey", "UpKey", "DownKey", "FireKey",
+  {"LeftKeysym", "RightKeysym", "UpKeysym", "DownKeysym", "FireKeysym",
    "SoundType", "SoundQ", "FullScreen",
    "SoundVolume", "MusicVolume", "MentalZone", "Initials", "You"};
 
@@ -6253,6 +6254,7 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
 void load_voice(int v, char* filename)
 {
  SDL_RWops* file = SDL_RWFromFile(filename, "r");
+ if (file==NULL) {sound_available=0; return;}
  SDL_RWseek(file, 0, SEEK_END);
  int file_len = SDL_RWtell(file)/*-44*/;
  SDL_RWseek(file, 0/*44*/, SEEK_SET);
@@ -6370,18 +6372,21 @@ void init_sounds() {
 void c_array_initializers() {
   init_projsplittab(); init_rocketbursttab(); init_alspintab(); init_strengthcol(); init_rockettab();
   init_palette(); init_splittab();
-  if (sound_available) init_sounds();
-  for (int i=0;i<256;i++) keyboard[i]=0;
+  if (sound_available) {
+    load_voices();
+    if (sound_available) init_sounds();
+    else printf("Sound disabled: loading sound effects failed\n");
+  }
+  for (int i=0;i<512;i++) keyboard[i]=0;
 }
 
 int main()
 {
   chdir(RESOURCEPATH);
-  load_voices();
  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
  sound_available=!Mix_OpenAudio(22050,AUDIO_U16LSB,2,1024);
-  c_array_initializers();
-   printf("%s\n",Mix_GetError());
+ if (!sound_available) printf("Sound disabled: opening audio device failed: %s\n",Mix_GetError());
+ c_array_initializers();
 /*MODE 15
 MODE 13
 VOICES 8
@@ -6477,16 +6482,16 @@ void swi_removecursors() {;}
 int swi_readescapestate() { return keyboard[ESC_VALUE];}
 
 void osbyte_71() {;}
-char osbyte_79(char c) {
+int osbyte_79(int c) {
   update_keyboard();
-  char key = keybuf;
-  keybuf = 0xff;
+  int key = keybuf;
+  keybuf = -1;
   return key;
-  //for (int i=0;i<255;i++) if (keyboard[i]) {/*printf("Returning %i\n",i);*/ return i;}
-  return 0xff;
+  //for (int i=0;i<512;i++) if (keyboard[i]) {/*printf("Returning %i\n",i);*/ return i;}
+  return -1;
 }
 
-char osbyte_7a() { update_keyboard(); for (int i=0;i<255;i++) if (keyboard[i]) return i; return 0xff;}
+int osbyte_7a() { update_keyboard(); for (int i=0;i<512;i++) if (keyboard[i]) return i; return -1;}
 void osbyte_7c() { keyboard[ESC_VALUE] = 0;}
 
 int osbyte_81(int c) {
@@ -6644,7 +6649,7 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
   if (*s != 0x31505346) return 0; // "FSP1"
   int num_sprites = *(s+3);
   if (num_sprites>max_sprites) num_sprites = max_sprites;
-  for (int i=0;i<num_sprites;i++) { // hack, where did last one go?
+  for (int i=0;i<num_sprites;i++) {
     if (*(s+4+i)==0) {sprites[i].s=NULL; continue;}
     uint32_t* p = s + (*(s+4+i)>>2);
     uint32_t* r=s;
@@ -6667,7 +6672,6 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
     }
     SDL_UnlockSurface(sprites[i].s);
   }
-  //sprites[num_sprites-1] = sprites[num_sprites-2]; // hack
   return num_sprites;
 }
 
@@ -6681,12 +6685,12 @@ void update_keyboard()
     switch (e.type) {
     case SDL_KEYDOWN:
       ke=(SDL_KeyboardEvent*)&e;
-      keyboard[ke->keysym.scancode] = 0xff;
-      keybuf = ke->keysym.scancode;
+      keyboard[ke->keysym.sym] = 0xff;
+      keybuf = ke->keysym.sym;
       break;
     case SDL_KEYUP:
       ke=(SDL_KeyboardEvent*)&e;
-      keyboard[ke->keysym.scancode] = 0;
+      keyboard[ke->keysym.sym] = 0;
       break;
     case SDL_MOUSEBUTTONDOWN:
       me=(SDL_MouseButtonEvent*)&e;

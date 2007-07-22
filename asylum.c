@@ -1246,6 +1246,7 @@ void wipearea(int r0,int r1,int r2,int r3)
 {
 int ro=r1*hbytes;
 int rz=r3*hbytes;
+SDL_LockSurface(ArcScreen);
 char* r11=wipescrst;
 char* r10=screenuse+r0*4+ro-(rz>>1) /* R3 is a multiple of 2 */
                          -((r2*4)>>1);/* R2 is a multiple of 8 */
@@ -1254,14 +1255,16 @@ for (int r9=16;r9>0;r9--)
 wipetest:
 memcpy(r10,r11,128*4);
 r11+=128*4;
-r10+=320*4;
+r10+=hbytes;
 }
+SDL_UnlockSurface(ArcScreen);
 }
 
 void wipearearead(int r0,int r1,int r2,int r3)
 {
 int ro=r1*hbytes;
 int rz=r3*hbytes;
+SDL_LockSurface(ArcScreen);
 char* r11=wipescrst;
 char* r10=screenuse+r0*4+ro-(rz>>1) /* R3 is a multiple of 2 */
                          -((r2*4)>>1);/* R2 is a multiple of 8 */
@@ -1270,8 +1273,9 @@ for (int r9=16;r9>0;r9--)
 wipetest2:
 memcpy(r11,r10,128*4);
 r11+=128*4;
-r10+=320*4;
+r10+=hbytes;
 }
+SDL_UnlockSurface(ArcScreen);
 }
 
 void scorewipe() {wipearea(160,_scoreyofs,16*8,16);}
@@ -1346,6 +1350,7 @@ else carry=0;
 
 void showstrength()
 {
+SDL_LockSurface(ArcScreen);
 if (lagerctr!=0)
 {
 if ((lagerctr-=frameinc)<0)  lagerctr=0;
@@ -1355,7 +1360,7 @@ laststrength+=frameinc<<6;
 if (laststrength>_strengthinit)  laststrength=_strengthinit;
 }
  nolager:;
-Uint32* r10=((Uint32*)screenuse)+_strengthxofs+320*_strengthyofs;
+Uint32* r10=((Uint32*)screenuse)+_strengthxofs+(hbytes/4)*_strengthyofs;
 int r3=plstrength;
 if (r3>_strengthmax)  r3=_strengthmax;
 if (r3<0)  r3=0;
@@ -1369,14 +1374,14 @@ loop32:
 for (int r6=6;r6>0;r6--)
 {
   *r4=*(strengthcoltab+(random()&0x1f));
-r4+=320;
+r4+=hbytes/4;
 }
 r10++;
 r7++;
 }
 
 writeblue:
-r10=((Uint32*)screenuse)+_strengthxofs+320*_strengthyofs;
+r10=((Uint32*)screenuse)+_strengthxofs+(hbytes/4)*_strengthyofs;
 r10+=(spstrengthmax>>8);
 if (framectr-laststrengthframe>2)  laststrengthframe=framectr;
 
@@ -1388,7 +1393,7 @@ loop34:
 for (int r6=6;r6>0;r6--)
 {
   *r4=*(strengthcoltab+0x24+(random()&0x1f));
-r4+=320;
+r4+=hbytes/4;
 }
 r10--;
 r7++;
@@ -1400,15 +1405,17 @@ mask=0;
 if (r3>=-3)  mask+=0xff;
 if (r3>=-2)  mask+=0xff00;
 if (r3>=-1)  mask+=0xff0000;
-if (r3>=0)  return;
-
+if (r3<0) 
+{
 Uint32* r4=r10;
 for (int r6=6;r6>0;r6--)
 {
 loop33:
 *r4=(*(strengthcoltab+0x24+(random()&0x1f))&~mask)|((*r4)&mask);
-r4+=320;
+r4+=hbytes/4;
 }
+}
+SDL_UnlockSurface(ArcScreen);
 return;
 }
 
@@ -4464,15 +4471,15 @@ skip2:;
 }
 
 #define FORTYEIGHT (48*4)
-#define TTOFFSET (320*4*31+32*4)
-/* not 320*32*4? */
+#define TTOFFSET (hbytes*32)
 
 char backdrop_to_blit[FORTYEIGHT];
 
 void backdrop()
 {
   //  swi_fastspr_clearwindow();
-screentop=screenuse+320*8*4+16*4;
+SDL_LockSurface(ArcScreen);
+screentop=screenuse+hbytes*8+4*16;
 
 int r3=((xpos>>8)-(xpos>>10)+3072-768); // parallax
 backuse=backadr+(r3&3)*1536*sizeof(Uint32);
@@ -4498,35 +4505,35 @@ memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET+FORTYEIGHT*6; // XXX not 320*32?
+r14+=TTOFFSET;
 memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET+FORTYEIGHT*6; // XXX not 320*32?
+r14+=TTOFFSET;
 memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET+FORTYEIGHT*6; // XXX not 320*32?
+r14+=TTOFFSET;
 memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET+FORTYEIGHT*6; // XXX not 320*32?
+r14+=TTOFFSET;
 memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET+FORTYEIGHT*6; // XXX not 320*32?
+r14+=TTOFFSET;
 memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
@@ -4535,6 +4542,7 @@ memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
 memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
 if (++r4>31) r4=0;
 }
+SDL_UnlockSurface(ArcScreen);
 }
 
 int escapehandler()
@@ -4594,10 +4602,10 @@ rejoin();
 
 void copyscreen()
 {
-  char* r0=screenstart;
-  char* r2=screenstart+modesize;
-for (int r1=0x14000;r1>0;r1-=1)
-     loop30: *(r2++)=*(r0++);
+//  char* r0=screenstart;
+//  char* r2=screenstart+modesize;
+//for (int r1=0x14000;r1>0;r1-=1)
+//     loop30: *(r2++)=*(r0++);
 swi_blitz_screenflush();
 }
 
@@ -4723,9 +4731,9 @@ void decompins(char* rr10,char* r11)
  from.x = from.y = to.x = to.y = 0;
  to.w = ArcScreen->w; to.h = ArcScreen->h;
  from.w = DecompScreen->w; from.h = DecompScreen->h;
-  Uint32* r10=(Uint32*)rr10;
-  Uint32* r9=0x14000+r10;
   SDL_LockSurface(DecompScreen);
+  Uint32* r10=(Uint32*)DecompScreen->pixels; //(Uint32*)rr10;
+  Uint32* r9=0x14000+r10;
 
   r11+=68;
   while (r9>r10) // > or >=?
@@ -4734,16 +4742,19 @@ void decompins(char* rr10,char* r11)
    char r0=*(r11++);
   if (r0&0x80)
     {
-    sequence:; Uint32 s=alt_palette[0xff&*(r11++)];
+    sequence:; Uint32 s=palette[0xff&*(r11++)];
    for (int r3=(r0&0x7f)+2;(r9>r10)&&(r3!=0);r3--)
      loopb6: *(r10++)=s;
     }
   else pattern: for (int r3=(r0&0x7f)+1;(r9>r10)&&(r3!=0);r3--)
-    loopb5: *(r10++)=alt_palette[0xff&*(r11++)];
+    loopb5: *(r10++)=palette[0xff&*(r11++)];
 decompdone:;
     }
   SDL_UnlockSurface(DecompScreen);
-  SDL_SoftStretch(ArcScreen,NULL,DecompScreen,NULL);
+  releaseclip();
+  //SDL_SoftStretch(ArcScreen,NULL,DecompScreen,NULL);
+  SDL_BlitSurface(DecompScreen, NULL, ArcScreen, NULL);
+  writeclip();
 }
 
 void clearkeybuf()
@@ -6293,10 +6304,12 @@ osbyte_f1(1); //get non-shadow screen bank
 
 ArcScreen = SDL_SetVideoMode( 320, 256, 32 /*bpp*/, SDL_HWSURFACE | (fullscreen?SDL_FULLSCREEN:0));
 DecompScreen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 256, 32,
-						  0xff,0xff00,0xff0000,0xff000000);
+						  0xff,0xff00,0xff0000,0);
  modesize = 0; // hack: don't double buffer 320*256*4;
- hbytes = 320*4;
+ hbytes = ArcScreen->pitch;
+ SDL_LockSurface(ArcScreen);
  screenstart = (char*)(ArcScreen->pixels);
+ SDL_UnlockSurface(ArcScreen);
   /* initialise screenstart(149), modesize(7), hbytes(6) */
 screenuse=screenstart;
  SDL_ShowCursor(SDL_DISABLE);

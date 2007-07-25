@@ -18,7 +18,7 @@
 void fspplot(fastspr_sprite*, char, int, int);
 
 void init();
-void abort_game();
+int abort_game();
 int game();
 void switchcolch();
 void switchbank();

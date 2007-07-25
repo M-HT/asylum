@@ -7,13 +7,15 @@ malfunctioning brain cells.
 
 A port of Andy Southgate's 1994 platform shooter for the Acorn Archimedes.
 
-Installation
-============
+Installing and running
+======================
 
-	sudo make install
+	make
+	sudo make install             # optional
+	asylum
 
 You'll need SDL and SDL_mixer.  If you don't have (or don't want to be) root,
-modify the Makefile to point at directories you have write access to.
+you can invoke the game as "./asylum" from this directory.
 
 Instructions
 ============
@@ -27,6 +29,5 @@ Licensing
 =========
 
 SDL Asylum is distributed under GPL version 3.  The original game music
-and graphics are © Andy Southgate 1993, and were placed in the public domain
-by Andy Southgate in 2002.
-
+and graphics are © Andy Southgate 1993, and have been placed in the public
+domain by Andy Southgate.

@@ -29,6 +29,7 @@
 char keyboard[512];
 int keybuf;
 int mouse;
+int installed;
 
 #define ESC_VALUE 27
 
@@ -118,7 +119,7 @@ int fsplx, fsply, fsphx, fsphy;
 #define _rockettablen 192
 
 #define _strengthmax (108<<8)
-#define spstrengthmax (_strengthmax-(4<<8))
+#define spstrengthmax (_strengthmax-(1<<8))
 #define _strengthinit (108<<8)
 #define _strengthxofs 108
 #define _strengthyofs 239
@@ -435,21 +436,20 @@ switchfspbank();
 switchbank()      ;//set up bank variables
 switchfspbank();
 checkifarm3();
- if (getfiles()) {abort_game(); return;}
+ if (getfiles()) abort_game();
 setdefaults();
 loadconfig();
  vduread(); // set screen size from options
 
- if (prelude()) {abort_game(); return;}
 scorezero();
-while (1)
+for (prelude()&&abort_game(); ; options(0)&&abort_game())
 {
 playloop:
 osbyte_7c();
-if (options(0)) // not in game
-  {abort_game(); return;}
+//if (options(0)) // not in game
+//  {abort_game(); return;}
 if (getlevelfiles())
-  {notgotlevel: if (1) {abort_game(); return;}
+  {notgotlevel: if (1) abort_game();
   // or, depending on what getlevelfiles() returned
   continue;}
 
@@ -472,11 +472,13 @@ swi_bodgemusic_volume(musicvol);
 }
 }
 
-void abort_game()
+int abort_game()
 {
 swi_bodgemusic_stop();
 losehandlers();
 osbyte_7c();
+SDL_Quit();
+exit(0);
 }
 
 char endmes[] = "Game exited cleanly";
@@ -5608,11 +5610,13 @@ char egosave[] = "/EgoHighScores";
 char psychesave[] = "/PsycheHighScores";
 char idsave[] = "/IdHighScores";
 char extendedsave[] = "/ExtendedHighScores";
+char testsave[] = "/TestPermissions";
 
 void savescores()
 {
 highscorearea[13*5] = swi_oscrc(0,highscorearea,highscorearea+13*5,1);
  char r1[240]=SCOREPATH;
+  if (!installed) strcpy(r1,"./hiscores");
 switch (mentalzone)
 {
 case 2: strcat(r1,psychesave); break;
@@ -5621,12 +5625,13 @@ case 4: strcat(r1,extendedsave); break;
 default: strcat(r1,egosave);
 }
 swi_osfile(10,r1,highscorearea,highscorearea+13*5+1);
-chmod(r1,0060);
+if (installed) chmod(r1,0060);
 }
 
 void loadscores()
 {
   char r1[240]=SCOREPATH;
+  if (!installed) strcpy(r1,"./hiscores");
 switch (mentalzone)
 {
 case 2: strcat(r1,psychesave); break;
@@ -6142,7 +6147,7 @@ Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, ch
   double vs = ((Sint16)(volslide&0xffff))/22050.0;
   Sint16 psmax = pitchslide>>16;
   double matching = 0;
-  printf("."); fflush(stdout);
+  fprintf(stderr,"."); fflush(stderr);
   for (int i=0; i<numsamples*2*sizeof(Uint16); i+=4, time++, s+=2)
   {
     Uint16 mono = 0;
@@ -6345,7 +6350,7 @@ void init_sounds() {
  Sint16 exp[8] = {0,132,396,924,1980,4092,8316,16764};
  for (int i=0;i<256;i++)
    mulaw[i] = ((i&1)?-1:1) * (exp[i>>5] + ((i&0x1e)<<(2+(i>>5))));
- printf("Building sound effects ");
+ fprintf(stderr,"Building sound effects ");
   CHUNK_BULLET_1 = make_sound(_Sampsmallzap,fullpitch+0x1000,0,(fullpitch<<16)|0xfe00,2);
   CHUNK_BULLET_2 = make_sound(_Sampbigzap,fullpitch+0x1800,0,(fullpitch<<16)|0xfe00,2);
   CHUNK_BULLET_3 = make_sound(_Sampbigzap,fullpitch+0x1000,0,(fullpitch<<16)|0xfe00,2);
@@ -6379,7 +6384,7 @@ void init_sounds() {
   CHUNK_BONUS_2 = make_sound(_SampBonus,0x2000,0,0,5);
   for (int i=0;i<17;i++) CHUNK_STUNNED[i] = make_sound(_SampStunned,0x4000-i*0x100,0,0,50);
 
- printf(" done.\n");
+ fprintf(stderr," done.\n");
 }
 
 void c_array_initializers() {
@@ -6388,17 +6393,26 @@ void c_array_initializers() {
   if (sound_available) {
     load_voices();
     if (sound_available) init_sounds();
-    else printf("Sound disabled: loading sound effects failed\n");
+    else fprintf(stderr,"Sound disabled: loading sound effects failed\n");
   }
   for (int i=0;i<512;i++) keyboard[i]=0;
 }
 
 int main()
 {
-  chdir(RESOURCEPATH);
+ char r1[240] = SCOREPATH;
+ strcat(r1,testsave);
+ FILE* permission_test = fopen(r1,"w");
+ installed = (NULL != permission_test);
+ if (installed) { fclose(permission_test); unlink(r1);}
+ if (chdir(RESOURCEPATH)&&chdir("./data"))
+ {
+   fprintf(stderr,"Couldn't find resources directory (tried %s, ./data)",RESOURCEPATH);
+   exit(1);
+ }
  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
  sound_available=!Mix_OpenAudio(22050,AUDIO_U16LSB,2,1024);
- if (!sound_available) printf("Sound disabled: opening audio device failed: %s\n",Mix_GetError());
+ if (!sound_available) fprintf(stderr,"Sound disabled: opening audio device failed: %s\n",Mix_GetError());
  c_array_initializers();
 /*MODE 15
 MODE 13

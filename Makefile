@@ -1,11 +1,12 @@
 CC=gcc
-CFLAGS=-x c++ -funsigned-char -ggdb3 -DRESOURCEPATH=\"$(INSTALLRESOURCEPATH)\" \
+CFLAGS= -x c++ -O2 -funsigned-char \
+	-DRESOURCEPATH=\"$(INSTALLRESOURCEPATH)\" \
 	-DSCOREPATH=\"$(INSTALLHISCORES)\"
 LIBS=-lm -lSDL -lSDL_mixer -lstdc++
 
 RESOURCES=data/Resources data/Ego data/Psyche data/Id data/Voices
 
-INSTALLBIN=/usr/local/games/asylum
+INSTALLBIN=/usr/games/asylum
 INSTALLRESOURCEPATH=/usr/share/games/asylum
 INSTALLHISCORES=/var/games/asylum
 

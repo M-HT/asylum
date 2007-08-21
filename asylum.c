@@ -3841,7 +3841,8 @@ if ((*(r11+boardwidth*2)>=_blim)||(*(r11+boardwidth*2+1)>=_blim))
 //fallinggap(&fraudalent);
 // CMP R6,#15<<8
 // not sure how the original game manages without fallinggap's return value.
-if ((!fallinggap(&fraudalent))&&((ytemp&(15<<8))!=(15<<8)))
+int fg=fallinggap(&fraudalent);
+if ((!fg)&&((ytemp&(15<<8))!=(15<<8)))
 {
   r11=translate(fraudalent.x+fraudalent.dx,fraudalent.y);
  char* r10=translate(fraudalent.x+fraudalent.dx,fraudalent.y/*+(4<<8)*/); // 4<<8 was commented out
@@ -3852,6 +3853,15 @@ if ((*(r10-boardwidth)>=_blim)||(*(r11)>=_blim)||(*(r11+boardwidth)>=_blim))
 //right
 
 if ((*(r10-boardwidth+1)>=_blim)||(*(r11+1)>=_blim)||(*(r11+boardwidth+1)>=_blim))
+	noright(&fraudalent);
+}
+ else if (fg==-1)
+{
+r11=translate(fraudalent.x+fraudalent.dx,fraudalent.y);
+if ((*(r11-boardwidth)>=_blim)||(*r11>=_blim))
+	noleft(&fraudalent);
+//right
+if ((*(r11-boardwidth+1)>=_blim)||(*(r11+1)>=_blim))
 	noright(&fraudalent);
 }
 else
@@ -3917,7 +3927,7 @@ stopfallup:
 if ((ytemp&(15<<8))>(8<<8)) return 0;
 if (*(r11-boardwidth+r1)<_blim) return 0;
 if (*(r11+boardwidth*2+r1)<_blim) return 0;
- if (*(r11+boardwidth*2+(1-r1))<_blim) {noup(re); return 1;}
+ if (*(r11+boardwidth*2+(1-r1))<_blim) {noup(re); return -1;}
 }
 }
 }

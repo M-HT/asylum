@@ -3930,6 +3930,7 @@ if (*(r11+boardwidth*2+r1)<_blim) return 0;
  if (*(r11+boardwidth*2+(1-r1))<_blim) {noup(re); return -1;}
 }
 }
+return 0;
 }
 
 void nodown(alent* r11)

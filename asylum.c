@@ -673,7 +673,8 @@ for (char* r10=r11->text;*r10!=0;r10++)
   char r0;
 loopa7:
 r0=*r10;
-fspplot(charsadr,*r10-1,XxX,YyY);
+if ((*r10-1) < 48)     // only plot known characters (charsadr is [48])
+       fspplot(charsadr,*r10-1,XxX,YyY);
 XxX+=14;
 if (*r10<=10) XxX+=2;
 if (*r10>43) XxX-=6;
@@ -4412,9 +4413,9 @@ for (;(r2>=_eleclowlim)&&(r2<=_elechighlim);r2=*(r10+=r4))
 
 void deletetwin(char* r5)
 {
-*r5=0;
-if ((r5-boardadr->contents)&1) *(r5-1)=0;
+if ((*r5)&1) *(r5-1)=0;
 else *(r5+1)=0;
+*r5=0;
 }
 
 void deletepoint()

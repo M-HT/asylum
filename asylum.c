@@ -34,10 +34,10 @@ int installed;
 #define ESC_VALUE 27
 
 #ifndef RESOURCEPATH
-#define RESOURCEPATH "./data"
+#define RESOURCEPATH "/usr/share/games/asylum"
 #endif
 #ifndef SCOREPATH
-#define SCOREPATH "./hiscores"
+#define SCOREPATH "/var/games/asylum"
 #endif
 
 #define random rand
@@ -442,12 +442,12 @@ loadconfig();
  vduread(); // set screen size from options
 
 scorezero();
-for (prelude()&&abort_game(); ; options(0)&&abort_game())
+for (prelude()&&abort_game(); ; )
 {
 playloop:
 osbyte_7c();
-//if (options(0)) // not in game
-//  {abort_game(); return;}
+if (options(0)) // not in game
+  {abort_game(); return;}
 if (getlevelfiles())
   {notgotlevel: if (1) abort_game();
   // or, depending on what getlevelfiles() returned
@@ -460,8 +460,6 @@ if (neuronctr>=_neuronstoget)
 zonedone:
 if (idpermit!=1) permitid();
  swi_bodgemusic_start(1,0); // ?? (3,0) in original
-showhighscore();
-continue;
 }
 else // was "else if overflow clear"
 {
@@ -469,6 +467,7 @@ if (soundtype==2) swi_bodgemusic_start(2,0);
 swi_sound_qtempo(0x980);
 swi_bodgemusic_volume(musicvol);
 }
+showhighscore();
 }
 }
 
@@ -4451,7 +4450,18 @@ int r8=15-(r0&15);
 int r9=15-(r1&15);
 
 
-int r5=0, r7=(r1>>4);
+int r5=0, rF=0, r7=(r1>>4);
+if (r7<0) {r5=-r7; r7=0;}
+
+// Draw midground elements
+for (;/*ins2:*/ (r5<14)&&(r7<boardadr->height);r5++,r7++,rF++) {
+int r4=0,rf=0,r6=((xpos>>8)-144)>>4;
+if (r6<0) {r4=-r6; r6=0;}
+for (;/*ins1:*/ (r4<21)&(r6<boardadr->width);/*skip1:*/ r4++,r6++,rf++) {
+r0=*(boardadr->contents+boardwidth*r7+r6);
+if ((r0>=8)&&(r0<12)) fspplot(blockadr,r0,(r4<<4)-rf+10+r8,(r5<<4)-rF+7+r9);}}
+// Now foreground ones
+r5=0, r7=(r1>>4);
 if (r7<0) {r5=-r7; r7=0;}
 
  for (;/*ins2:*/ (r5<14)&&(r7<boardadr->height);r5++,r7++)
@@ -4464,7 +4474,7 @@ for (;/*ins1:*/ (r4<21)&(r6<boardadr->width);/*skip1:*/ r4++,r6++)
 {
 l1:
 r0=*(boardadr->contents+boardwidth*r7+r6);
-if (r0==0) continue;
+if ((r0==0)||((r0>=8)&&(r0<12))) continue; // was if (r0==0)
 if ((r0&~7)==_neuronlowlim) r0=_neuronlowlim+((framectr&(7<<2))>>2);
 if (r0<=_crumblestandhighlim)
 {
@@ -4781,8 +4791,6 @@ do clearkbloop2:;
 
 const int keydefs[] =
   { -SDLK_z, -SDLK_x, -SDLK_SEMICOLON, -SDLK_PERIOD, -SDLK_RETURN};
-//{ -52, -53, -47, -60, -36};
-    //{ 97^0xff, 66^0xff, 79^0xff, 104^0xff, 73^0xff };
 
 void setdefaults()
 {
@@ -4882,23 +4890,25 @@ while (1)
 clearkeybuf();
 wipetexttab();
 showchatscreen();
+swi_fastspr_setclipwindow(20,20,319-20,255-20);
+swi_fastspr_clearwindow();
  message(128,48,0,0,"Options");
  message(32,96,0,0,"1. Define Controls");
  message(32,128,0,0,"2. Tune Game Options");
  message(88,224,0,0,"Fire - Play");
  if (gameon==0) message(32,160,0,0,"3. Choose Mental Zone");
- if ((gameon==0)&&(savedornot==1)) message(32,192,0,0,"4. Save Settings");
+// if (savedornot==1) message(32,192,0,0,"4. Save Settings");
 showtext();
-switch (readopt(gameon?2:4))
+swi_blitz_wait(20); //
+switch (readopt((gameon==0)?3:2))
 {
 case -1: optionexit: return 1;
-case  1: choosecontrol(); break;
-case  2: tunegame(); break;
-case  3: getzone(); break;
-case  4: dosaveconf(); break;
+case  1: choosecontrol(); dosaveconf(); break;
+case  2: tunegame(); dosaveconf(); break;
+case  3: if (gameon==0) {getzone(); dosaveconf();} break;
+//case  4: if (savedornot==1) dosaveconf(); break;
 default: soundupdate(); return 0;
 }
-savedornot=1;
 }
 }
 
@@ -5216,6 +5226,7 @@ int prelude()
 {
 cheatpermit=0;
 frameinc=1;
+setfullclip();
 showchatscreen();
  swi_fastspr_setclipwindow(20,20,320-20-1,255-20);
  swi_fastspr_clearwindow();
@@ -5628,7 +5639,7 @@ void savescores()
 {
 highscorearea[13*5] = swi_oscrc(0,highscorearea,highscorearea+13*5,1);
  char r1[240]=SCOREPATH;
-  if (!installed) strcpy(r1,"./hiscores");
+  if (!installed) strcpy(r1,"../hiscores");
 switch (mentalzone)
 {
 case 2: strcat(r1,psychesave); break;
@@ -5643,7 +5654,7 @@ if (installed) chmod(r1,0060);
 void loadscores()
 {
   char r1[240]=SCOREPATH;
-  if (!installed) strcpy(r1,"./hiscores");
+  if (!installed) strcpy(r1,"../hiscores");
 switch (mentalzone)
 {
 case 2: strcat(r1,psychesave); break;
@@ -5919,6 +5930,7 @@ swi_sound_control(1,0x17c,140,0);
 }
 scoreexit:
 savescores();
+dosaveconf();
 }
 notontable:;
 }
@@ -6416,11 +6428,21 @@ int main()
  strcat(r1,testsave);
  FILE* permission_test = fopen(r1,"w");
  installed = (NULL != permission_test);
- if (installed) { fclose(permission_test); unlink(r1);}
- if (chdir(RESOURCEPATH)&&chdir("./data"))
- {
-   fprintf(stderr,"Couldn't find resources directory (tried %s, ./data)",RESOURCEPATH);
-   exit(1);
+ if (installed) {
+  fclose(permission_test); unlink(r1);
+  if (chdir(RESOURCEPATH))
+  {
+    fprintf(stderr,"Couldn't find resources directory %s\n",RESOURCEPATH);
+    exit(1);
+  }
+ }
+ else {
+  fprintf(stderr,"Running as uninstalled, looking for files in local directory.\n");
+  if (chdir("./data"))
+  {
+    fprintf(stderr,"Couldn't find resources directory ./data\n");
+    exit(1);
+  }
  }
  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
  sound_available=!Mix_OpenAudio(22050,AUDIO_U16LSB,2,1024);

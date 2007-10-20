@@ -4279,7 +4279,7 @@ int r6=-1;
 for (r9&=0xff;r9>0;r9-=(r6+1))
 {
 loopc3:
-r6=random()&3;
+r6=(r6+1)&3; // was random()&3
 makeobj(_Scoreobj,xpos,ypos,(hvec>>2)+((random()&(0xfe<<1))-0xfe),
 	-(random()&(0xfe<<2)),0xf60+(10<<8)+(r6<<8),r6);
 }
@@ -6445,7 +6445,7 @@ int main()
   }
  }
  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
- sound_available=!Mix_OpenAudio(22050,AUDIO_U16LSB,2,1024);
+ sound_available=!Mix_OpenAudio(22050,MIX_DEFAULT_FORMAT,2,1024);
  if (!sound_available) fprintf(stderr,"Sound disabled: opening audio device failed: %s\n",Mix_GetError());
  c_array_initializers();
 /*MODE 15

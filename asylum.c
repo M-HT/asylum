@@ -5392,6 +5392,11 @@ if (r0==NULL) return;
  fclose(r0); 
 }
 
+uint32_t read_littleendian(uint32_t* word)
+{
+  uint8_t* bytes = (uint8_t*)word;
+  return (*bytes)|(bytes[1]<<8)|(bytes[2]<<16)|(bytes[3]<<24);
+}
 
 char gamescreenpath[] = "GameScreen";
 char chatscreenpath[] = "ChatScreen";
@@ -5517,6 +5522,9 @@ do
 reload=loadhammered(boardpath,currentpath,&r10);
 if (reload==-1) {reload=badlevelload();}
 } while (reload==1);
+// hack: fix endianness
+boardadr->width=read_littleendian((uint32_t*)&boardadr->width);
+boardadr->height=read_littleendian((uint32_t*)&boardadr->height);
 
 backadr=r10;
 load7:
@@ -5586,6 +5594,9 @@ do
 reload=loadhammered(neuronpath,currentpath,&r10);
 if (reload==-1) {reload=badlevelload();}
 } while (reload==1);
+// hack: fix endianness
+boardadr->width=read_littleendian((uint32_t*)&boardadr->width);
+boardadr->height=read_littleendian((uint32_t*)&boardadr->height);
 return 0;
 }
 
@@ -6186,9 +6197,9 @@ Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, ch
    {
      if ((j<0)) continue;
      int jj=j;
-     Uint32 len=((Uint32*)voice[samp])[6];
-     Uint32 gap=((Uint32*)voice[samp])[7]; // ???
-     Uint32 rep=((Uint32*)voice[samp])[8];
+     uint32_t len=read_littleendian(((uint32_t*)voice[samp])+6);
+     uint32_t gap=read_littleendian(((uint32_t*)voice[samp])+7); // ???
+     uint32_t rep=read_littleendian(((uint32_t*)voice[samp])+8);
      if (jj>=len) {if (rep==0) continue; else jj = (len-rep) + ((jj-len)%rep);}
      double w;
      if (jj>=len-gap)
@@ -6255,7 +6266,7 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
       {
 	m->section++;
 	if (0x80&*m->section) m->section=tuneload+8;
-	m->pointer=((Uint32*)tuneload)[0x42+*m->section];
+	m->pointer=read_littleendian(((uint32_t*)tuneload)+0x42+*m->section);
       }
     }
     *s=0; s[1]=0;
@@ -6270,9 +6281,9 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
    {
      if ((j<0)) continue;
      int jj=j;
-     Uint32 len=((Uint32*)voice[m->inst[v]])[6];
-     Uint32 gap=((Uint32*)voice[m->inst[v]])[7]; // ???
-     Uint32 rep=((Uint32*)voice[m->inst[v]])[8];
+     uint32_t len=read_littleendian(((uint32_t*)voice[m->inst[v]])+6);
+     uint32_t gap=read_littleendian(((uint32_t*)voice[m->inst[v]])+7); // ???
+     uint32_t rep=read_littleendian(((uint32_t*)voice[m->inst[v]])+8);
      /*if (m->inst[v]==16)
        while (jj>=6960+1000) jj-=6960;
      else
@@ -6707,15 +6718,15 @@ void swi_fastspr_setclipwindow(int x1, int y1, int x2, int y2) {
 int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, char* end)
 {
   uint32_t* s = (uint32_t*)start;
-  if (*s != 0x31505346) return 0; // "FSP1"
-  int num_sprites = *(s+3);
+  if (read_littleendian(s) != 0x31505346) return 0; // "FSP1"
+  int num_sprites = read_littleendian(s+3);
   if (num_sprites>max_sprites) num_sprites = max_sprites;
   for (int i=0;i<num_sprites;i++) {
-    if (*(s+4+i)==0) {sprites[i].s=NULL; continue;}
-    uint32_t* p = s + (*(s+4+i)>>2);
+    if (read_littleendian(s+4+i)==0) {sprites[i].s=NULL; continue;}
+    uint32_t* p = s + (read_littleendian(s+4+i)>>2);
     uint32_t* r=s;
     if (i==num_sprites-1) r = (uint32_t*) end;
-    else for (int j=0;(r==s)&&(i+j<num_sprites-1);j++) r = s + (*(s+5+i+j)>>2);
+    else for (int j=0;(r==s)&&(i+j<num_sprites-1);j++) r = s + (read_littleendian(s+5+i+j)>>2);
     if (r==s) r=(uint32_t*)end;
     uint8_t* pp = (uint8_t*) p;
     int wid = pp[0], hei = pp[1], xcen = pp[2], ycen = pp[3];
@@ -6726,10 +6737,10 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
     uint32_t* data = (uint32_t*) sprites[i].s->pixels;
     for (int z=0; z<wid*hei; z++) data[z] = 0x0;
     for (uint32_t* q = p + 2 + hei; q<r; q++) {
-      int x = ((0x0fffff00&*q)>>8) % 320;
-      int y = ((0x0fffff00&*q)>>8) / 320;
+      int x = ((0x0fffff00&read_littleendian(q))>>8) % 320;
+      int y = ((0x0fffff00&read_littleendian(q))>>8) / 320;
       if ((y*wid+x<0)||(y*wid+x>=wid*hei)) printf("%i: x=%i y=%i wid=%i hei=%i: bad idea\n",i,x,y,wid,hei);
-	else data[y*wid+x] = palette[0xff&*q];
+      else data[y*wid+x] = palette[0xff&read_littleendian(q)];
     }
     SDL_UnlockSurface(sprites[i].s);
   }

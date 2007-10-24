@@ -6531,7 +6531,7 @@ void swi_bodgemusic_start(int a,int b) {
  music.time=0;
  music.tune=tuneload[a];
  music.section=tuneload[a]+8;
- music.pointer=((Uint32*)(tuneload[a]))[0x42+*music.section];
+ music.pointer=read_littleendian(((uint32_t*)(tuneload[a]))+0x42+*music.section);
  for (int v=0;v<4;v++) {music.pitch[v]=0; music.inst[v]=0; music.start_time[v]=0;}
  Mix_HookMusic(sdl_music_hook, &music);
 }

@@ -31,6 +31,25 @@ int keybuf;
 int mouse;
 int installed;
 
+#define PROJ_TTL (1<<16)
+#define PROJ_ROCKET (1<<15)
+#define PROJ_FIVEWAY (1<<14)
+#define PROJ_SLOWSPLIT (1<<13)
+#define PROJ_WEIRDSPLIT (1<<12)
+#define ROCK_DIVIDE (1<<14)
+#define ROCK_REDIVIDE (1<<13)
+#define ROCK_BURST (1<<12)
+#define PROJ_EXPLO (1<<11)
+#define PROJ_SPLIT (1<<10)
+#define PROJ_ATOM (1<<9)
+
+#define BULL_TTL (1<<16)
+#define BULL_EXPLO (1<<15)
+#define BULL_ACCEL (1<<14)
+#define BULL_HOME (1<<13)
+#define BULL_SLOWHOME (1<<12)
+#define BULL_SPLIT (1<<10)
+
 #define ESC_VALUE 27
 
 #ifndef RESOURCEPATH
@@ -722,7 +741,7 @@ if (r4==7) r4=6;
 if (target>=_powertarget) r4-=6;
 if (target==_powertarget) r4=8+(r4&2);
 if (target==_nuttertarget) r4=12+(r4&3);
-makebul(x,y,dx,dy,_bulspritebase+r4,1<<24);
+makebul(x,y,dx,dy,_bulspritebase+r4,(1<<8)*BULL_TTL);
 }
 
 int splittab[14];
@@ -754,7 +773,7 @@ if ((r11->x<=xlowlim) || (xposmax<=r11->x) || (r11->y<=ylowlim) || (yposmax<=r11
 }
 
 if ((r11->dx<=(1<<12)) && (-r11->dx<=(1<<12)))
-	if (r11->flags & (1<<14))
+	if (r11->flags & BULL_ACCEL)
 	{
 		r11->dx += (r11->dx>>4);
 		r11->dy += (r11->dy>>4);
@@ -762,10 +781,10 @@ if ((r11->dx<=(1<<12)) && (-r11->dx<=(1<<12)))
 bulnoacc:
 
 
-if ((r11->flags & (1<<13)) && (r11->flags <= (3<<22)))
+if ((r11->flags & BULL_HOME) && (r11->flags <= (3<<6)*BULL_TTL))
 {
 	int r6 = 1<<6;
-	if (!(r11->flags & (1<<12)))
+	if (!(r11->flags & BULL_SLOWHOME))
 	{
 		r6 = 1<<4;
 		r11->dx -= (r11->dx>>5);
@@ -781,13 +800,13 @@ if (r11->dx<-_speedlim)  r11->dx = -_speedlim;
 if (r11->dy>_speedlim)  r11->dy = _speedlim;
 if (r11->dy<-_speedlim)  r11->dy = -_speedlim;
 
-r11->flags -= (1<<16);  /* decrement the life counter */
+r11->flags -= BULL_TTL;  /* decrement the life counter */
 
 if (r11->flags<0)
 {
 // out of time
 // goto buldestroy
-if ((r11->flags) & (1<<10)) goto bulsplit;
+if ((r11->flags) & BULL_SPLIT) goto bulsplit;
 r11->type = 0;
 continue;
 }
@@ -826,7 +845,7 @@ continue;
 nobultarget:
 r11->type=0;
 bulnodestroy:
-if ((r11->flags && (1<<15))!=0)
+if ((r11->flags & BULL_EXPLO)!=0)
 {
 // causeexplobullet:
 int DX=r11->dx>>4, DY=r11->dy>>4;
@@ -835,7 +854,7 @@ explogonopyro(r11->x-r11->dx,r11->y-(8<<8)-r11->dy,DX-DY,DX+DY,DX-DY,0,0);
 continue;
 }
 buldestroy:
-if ((r11->flags && (1<<10))==0)
+if ((r11->flags & BULL_SPLIT)==0)
 {
 	r11->type = 0;
 	continue;
@@ -853,7 +872,7 @@ newtype+=_bulspritebase;
 for (int i=0;i<14;i+=2)
 {
 	loop75:
-	(void)makebul(r11->x,r11->y,(r11->dx>>2)+splittab[i],(r11->dy>>2)+splittab[i+1],newtype,(1<<22));
+	(void)makebul(r11->x,r11->y,(r11->dx>>2)+splittab[i],(r11->dy>>2)+splittab[i+1],newtype,(1<<6)*BULL_TTL);
 }
 r11->type=0;
 }
@@ -884,11 +903,11 @@ if (i==bulctr) return 1; // failed
 }
 foundmakebul:
 
-if (flags<(1<<16))  flags |= (1<<22);
-if (type>=_bulspritebase+8)  flags |= (9<<12);
-if (type>=_bulspritebase+12)   flags = (1<<21) | (1<<10);
-if ((type==_bulspritebase+7)||(type==_bulspritebase+8))  flags |= (1<<13);
-if (type==_bulspritebase+10)  flags |= (1<<14);
+ if (flags<BULL_TTL)  flags |= (1<<6)*BULL_TTL;
+if (type>=_bulspritebase+8)  flags |= BULL_SLOWHOME|BULL_EXPLO;
+if (type>=_bulspritebase+12)   flags = ((1<<5)*BULL_TTL) | BULL_SPLIT;
+if ((type==_bulspritebase+7)||(type==_bulspritebase+8))  flags |= BULL_HOME;
+if (type==_bulspritebase+10)  flags |= BULL_ACCEL;
 
 r10->type = type;
 r10->x = x;
@@ -933,7 +952,7 @@ if ((r11->x<=xlowlim)||(xposmax<=r11->x)||(r11->y<=ylowlim)||(yposmax<=r11->y))
 	r11->type=0;
 	continue;
 }
-if (r11->flags&(1<<15))
+if (r11->flags&PROJ_ROCKET)
 	{r11->dx+=r11->dx>>4;  r11->dy+=r11->dy>>4;}
 
 projnoacc:
@@ -942,11 +961,11 @@ if (r11->dx<-_speedlim)  r11->dx=-_speedlim;
 if (r11->dy>_speedlim)  r11->dy=_speedlim;
 if (r11->dy<-_speedlim)  r11->dy=-_speedlim;
 
-r11->flags-=1<<16; // decrement the life counter
+r11->flags-=PROJ_TTL; // decrement the life counter
 if (r11->flags<0)  // out of time
 {
 projdestroy:
-  if (r11->flags&(1<<10))  {projsplit(r11); continue;}
+  if (r11->flags&PROJ_SPLIT)  {projsplit(r11); continue;}
 projoffscr:
 r11->type=0;
 continue;
@@ -955,7 +974,7 @@ alent* rs=bulcolcheck(r11->x,r11->y);
 if (rs!=NULL)
 {
 projhital:
-if (r11->flags&(1<<15))
+if (r11->flags&PROJ_ROCKET)
 	rs->r6 -= (bulletloss<<2);
 else rs->r6 -= bulletloss;
 r11->type=0;
@@ -965,7 +984,7 @@ int r6=(random()&7)+((r0>=_Alien1)?(r0-_Alien1):0)+_bonuslow;
 if (r6>_bonushigh) r6=_bonushigh-3;
 if (r6<_bonuslow) r6=_bonuslow;
 makeobj(_Flyingbonus,r11->x,r11->y,r11->dx>>2,-(1<<10),(0x200<<16),r6);
-if (r11->flags & (1<<15)) causeexplo(r11);
+if (r11->flags & PROJ_ROCKET) causeexplo(r11);
 else causeexplonopyro(r11);
 continue;
 }
@@ -974,7 +993,7 @@ char* r0=fntranslate(r11->x,r11->y);
 char r1=*r0;
 if ((r1<16)||
     //    projhit:  // hit a block
-    ((r1>=_translowlim)&&(r1<=_transhighlim)&&!(r11->flags&(1<<9))))
+    ((r1>=_translowlim)&&(r1<=_transhighlim)&&!(r11->flags&PROJ_ATOM)))
 {
 projhitins:
 if (masterplotal==0) continue;
@@ -990,9 +1009,9 @@ if ((r1>=_spcrumblelowlim)&&(r1<=_spcrumblehighlim)&&(plweapontype==5))
 nospcrumble:
 r11->type=0;
 destroy(r0);
-if (r11->flags&(1<<9))  {atomrocket(r11,r0); continue;}
-if (r11->flags&(1<<11))  {causeexplonopyro(r11); continue;}
-if (r11->flags&(1<<15))  {causeexplo(r11); continue;}
+if (r11->flags&PROJ_ATOM)  {atomrocket(r11,r0); continue;}
+if (r11->flags&PROJ_EXPLO)  {causeexplonopyro(r11); continue;}
+if (r11->flags&PROJ_ROCKET)  {causeexplo(r11); continue;}
 }
 }
 
@@ -1035,16 +1054,16 @@ int x=r11->x, y=r11->y, dx=(r11->dx)>>1, dy=(r11->dy)>>1;
 int flags=r11->flags;
 int* r10;
 int r9;
-if (flags&(1<<15)) {rocketsplit(r11); return;}
+if (flags&PROJ_ROCKET) {rocketsplit(r11); return;}
 
 int r7=r11->type, r4, r6;
 
-if (flags&(1<<14)) { r10=projsplittab; r9=5; r4=_projsmallno+1;}
+if (flags&PROJ_FIVEWAY) { r10=projsplittab; r9=5; r4=_projsmallno+1;}
 else { r10=projsplittab+2; r9=3; r4=_projsmallno;}
-if ((flags&(1<<13))==0)   dx>>=1;
-if (flags&(1<<12))  { r4=_projsmallno+2; dx<<=2;}
-if (flags&(1<<11))  { r4=_projsmallno+3; r6=1<<15;}
-else r6=1<<22;
+if ((flags&PROJ_SLOWSPLIT)==0)   dx>>=1;
+if (flags&PROJ_WEIRDSPLIT)  { r4=_projsmallno+2; dx<<=2;}
+if (flags&PROJ_EXPLO)  { r4=_projsmallno+3; r6=PROJ_ROCKET;}
+else r6=64*PROJ_TTL;
 
 for (;r9>0;r9--)
 {
@@ -1067,10 +1086,10 @@ void rocketsplit(projent* r11)
 {
 int x=r11->x, y=r11->y, dx=(r11->dx)>>3, dy=(r11->dy)>>3;
 int flags=r11->flags;
-if (flags&(1<<14)) {rocketpair(r11); return;}
+if (flags&ROCK_DIVIDE) {rocketpair(r11); return;}
  rocketburst:;
 
-int r5=(1<<22)|(1<<15)|(1<<11);
+int r5=(64*PROJ_TTL)|PROJ_ROCKET|PROJ_EXPLO;
 int* r10=rocketbursttab;
 for (int r9=5;r9>0;r9--)
 {
@@ -1087,11 +1106,11 @@ void rocketpair(projent* r11)
 int x=r11->x, y=r11->y, dx=r11->dx, dy=r11->dy;
 int flags=r11->flags;
 int type=r11->type;
-int newflags=1<<22;
-if (flags&(1<<12))  newflags=(1<<20)|(5<<10);
-if (flags&(1<<13))  // continue splitting
-	{ newflags&=~(1<<22); newflags|=(1<<20)|(17<<10);}
-newflags|=(1<<15);
+int newflags=64*PROJ_TTL;
+ if (flags&ROCK_BURST)  newflags=(16*PROJ_TTL)|ROCK_BURST|PROJ_SPLIT;
+if (flags&ROCK_REDIVIDE)  // continue splitting
+  { newflags&=~(64*PROJ_TTL); newflags|=(16*PROJ_TTL)|ROCK_DIVIDE|PROJ_SPLIT;}
+newflags|=PROJ_ROCKET;
 
 int newtype=type-2;
 if (newtype<_rocketspriteno) newtype+=2;
@@ -1133,7 +1152,7 @@ return 1;
 
 int foundmakeproj(projent* r10,int r8,int x,int y,int dx,int dy,int type,int flags)
 {
-if (flags<(1<<16)) flags|=(1<<22);
+  if (flags<(1*PROJ_TTL)) flags|=(64*PROJ_TTL);
 r10->type=type; r10->x=x; r10->y=y;
 r10->dx=dx; r10->dy=dy; r10->flags=flags;
 
@@ -2116,7 +2135,7 @@ for (int r4=4;r4>0;r4--)
 {
 loop82:
 makebul(r6[0]+r11->x,r6[1]+r11->y-(7<<8),r6[8]>>2,r6[9]>>2,
-	_bulspritebase+((r4+r0)&3),1<<24);
+	_bulspritebase+((r4+r0)&3),(1<<8)*BULL_TTL);
 r6+=8;
 }
 r6-=8;
@@ -2136,7 +2155,7 @@ for (int r4=4;r4>0;r4--)
 {
 loop84:
 makebul(r6[0]+r11->x,r6[1]+r11->y-(7<<8),r6[8]>>2,r6[9]>>2,
-	_bulspritebase+8+(r7<<1),1<<24);
+	_bulspritebase+8+(r7<<1),(1<<8)*BULL_TTL);
 r6+=8;
 }
 r6-=8;
@@ -2403,7 +2422,7 @@ int r3=(ypos+(8<<8))-(r11->y-(6<<8)); //  aim at body
 if ((r2>_firerange)||(r3>_firerange)) return;
 if ((r2<-_firerange)||(r3<-_firerange)) return;
 int r4=random()&7; if (r4==7) r4=6;
-makebul(r11->x,r11->y,(r2>>6),(r3>>6),_bulspritebase+r4,1<<24);
+makebul(r11->x,r11->y,(r2>>6),(r3>>6),_bulspritebase+r4,(1<<8)*BULL_TTL);
 
 bidforsound(_Explochannel,_Sampsmallzap,0x78,fullpitch+0x1000, // pitch
 	0,(fullpitch<<16)|0xfe00,2 /* lifetime (frames) */,0,CHUNK_SHOOT);
@@ -2417,7 +2436,7 @@ int r3=(ypos+(8<<8))-(r11->y-(6<<8)); //  aim at body
 if ((r2>_firerange)||(r3>_firerange)) return;
 if ((r2<-_firerange)||(r3<-_firerange)) return;
 int r4=random()&7; if (r4==7) r4=6;
-makebul(r11->x,r11->y,(r2>>5),(r3>>5),_bulspritebase+r4,1<<24);
+makebul(r11->x,r11->y,(r2>>5),(r3>>5),_bulspritebase+r4,(1<<8)*BULL_TTL);
 
 bidforsound(_Explochannel,_Sampsmallzap,0x6f,fullpitch+0x1000, // pitch
 	0,(fullpitch<<16)|0xfe00,2 /* lifetime (frames) */,0,CHUNK_SHOOT);
@@ -2429,7 +2448,7 @@ int r2=xpos-r11->x;
 int r3=(ypos+(12<<8))-(r11->y-(8<<8)); //fire from sensible place;  aim at body
 if ((r2>_firerange)||(r3>_firerange)) return;
 if ((r2<-_firerange)||(r3<-_firerange)) return;
-makebul(r11->x,r11->y,0,-(1<<10),_bulspritebase+12,1<<22);
+makebul(r11->x,r11->y,0,-(1<<10),_bulspritebase+12,(1<<6)*BULL_TTL);
 
 bidforsound(_Explochannel,_Sampbigzap,0x6f,fullpitch, // pitch
 	0,(fullpitch<<16)|0xfe00,2 /* lifetime (frames) */,0,CHUNK_SHOOTNUTTER);
@@ -2441,7 +2460,7 @@ int r2=xpos-r11->x;
 int r3=(ypos+(12<<8))-(r11->y-(8<<8)); //fire from sensible place;  aim at body
 if ((r2>_firerange)||(r3>_firerange)) return;
 if ((r2<-_firerange)||(r3<-_firerange)) return;
-makebul(r11->x,r11->y,0,-(1<<10),_bulspritebase+13,1<<21);
+makebul(r11->x,r11->y,0,-(1<<10),_bulspritebase+13,(1<<5)*BULL_TTL);
 
 bidforsound(_Explochannel,_Sampbigzap,0x6f,fullpitch, // pitch
 	0,(fullpitch<<16)|0xfe00,2 /* lifetime (frames) */,0,CHUNK_SHOOTNUTTER);
@@ -2456,7 +2475,7 @@ if ((r2<-_firerange)||(r3<-_firerange)) return;
 int r=random();
 if (r&(1<<11)) {r2=0; r3=-(1<<10);}
 else {r2=(r&(1<<10))?(1<<10):-(1<<10); r3=0;}
-makebul(r11->x,r11->y,r2,r3,_bulspritebase+14,1<<21);
+makebul(r11->x,r11->y,r2,r3,_bulspritebase+14,(1<<5)*BULL_TTL);
 
 bidforsound(_Explochannel,_Sampbigzap,0x6f,fullpitch, // pitch
 	0,(fullpitch<<16)|0xfe00,2 /* lifetime (frames) */,0,CHUNK_SHOOTNUTTER);
@@ -2469,7 +2488,7 @@ int r3=(ypos+(8<<8))-(r11->y-(6<<8)); //  aim at body
 if ((r2>_firerange)||(r3>_firerange)) return;
 if ((r2<-_firerange)||(r3<-_firerange)) return;
 int r4=8+(random()&2);
-makebul(r11->x,r11->y,(r2>>6),(r3>>6),_bulspritebase+r4,1<<24);
+makebul(r11->x,r11->y,(r2>>6),(r3>>6),_bulspritebase+r4,(1<<8)*BULL_TTL);
 
 bidforsound(_Explochannel,_Sampsmallzap,0x6f,fullpitch+0x1000, // pitch
 	0,(fullpitch<<16)|0xfe00,2 /* lifetime (frames) */,0,CHUNK_SHOOT);
@@ -3416,7 +3435,7 @@ int r2, r0;
 if (plface==1) {r0=xpos-(20<<8); r2=(r4<<5)-(4<<8);}
 else {r0=xpos+(20<<8); r2=(4<<8)-(r4<<5);}
 
-makeproj(r0,ypos+(12<<8),r2,r3<<6,57,1<<15);
+makeproj(r0,ypos+(12<<8),r2,r3<<6,57,PROJ_ROCKET);
 }
  int r1,r3;
 if (plface==1) {r1=xpos-(24<<8); r3=-(1<<8);}
@@ -3445,7 +3464,7 @@ if (r3<-60) r4-=2;
 if (r3<-170) r4-=2;
 // ??? CMP R3,#1
 r4+=36;
-makeproj(r0+r2*2,r1+r3*2,r2,r3,r4,0x12<<8);
+makeproj(r0+r2*2,r1+r3*2,r2,r3,r4,PROJ_WEIRDSPLIT|PROJ_ATOM);
 }
 
 if (plface==1) {r1=xpos+(24<<8); r3=(1<<9);}
@@ -3474,13 +3493,13 @@ int r2=(plface==1)?-(hvec>>1)-(plweaponspeed<<8):(hvec>>1)+(plweaponspeed<<8);
 int r5;
 switch (plweapontype&7)
 {
-case 2: r5=(1<<18)|(1<<10); break;
-case 3: r5=(1<<18)|(1<<10)|(1<<14); break;
-case 4: r5=(1<<18)|(1<<10)|(3<<13); break;
-case 5: r5=(1<<18)|(1<<10)|(1<<20)|(3<<12); r2>>=2; break;
-case 6: r5=(1<<18)|(1<<10)|(1<<11); break;
-case 7: r5=(1<<18)|(1<<10)|(9<<11); break;
-default: r5=1<<22;
+case 2: r5=(4*PROJ_TTL)|PROJ_SPLIT; break;
+case 3: r5=(4*PROJ_TTL)|PROJ_SPLIT|PROJ_FIVEWAY; break;
+case 4: r5=(4*PROJ_TTL)|PROJ_SPLIT|PROJ_FIVEWAY|PROJ_SLOWSPLIT; break;
+case 5: r5=(20*PROJ_TTL)|PROJ_SPLIT|PROJ_SLOWSPLIT|PROJ_WEIRDSPLIT; r2>>=2; break;
+case 6: r5=(4*PROJ_TTL)|PROJ_SPLIT|PROJ_EXPLO; break;
+case 7: r5=(4*PROJ_TTL)|PROJ_SPLIT|PROJ_FIVEWAY|PROJ_EXPLO; break;
+default: r5=(64*PROJ_TTL);
 }
 makeproj(xpos+((plface==1)?-(14<<8):(14<<8)),ypos+(12<<8),
   r2,(random()&0xff)-0x7f,(plface==1)?31:30,r5);
@@ -3528,21 +3547,20 @@ if (r6>=6) r6=random()&7;
  int r5;
 switch (r6)
 {
-case 1: r5=(1<<19)|(1<<10)|(1<<14); // split
+case 1: r5=(8*PROJ_TTL)|PROJ_SPLIT|ROCK_DIVIDE; // split
 	break;
-case 2: r5=(1<<19)|(1<<10)|(3<<13); //split twice
+case 2: r5=(8*PROJ_TTL)|PROJ_SPLIT|ROCK_DIVIDE|ROCK_REDIVIDE; //split twice
 	break;
-case 3: r5=        (1<<10)|(9<<12)  // burst
-		  |(5<<18)        ; //   a safe distance away
+case 3: r5=(20*PROJ_TTL)|PROJ_SPLIT|PROJ_ROCKET|ROCK_BURST;  // burst a safe distance away
 	break;
-case 4: r5=(7<<17)|(1<<10)|(0xd<<12); //dual burst
+case 4: r5=(14*PROJ_TTL)|PROJ_SPLIT|PROJ_ROCKET|ROCK_DIVIDE|ROCK_BURST; // dual burst
 	break;
-case 5: r5=(1<<19)|(1<<10)|(0xf<<12); //dual burst
+case 5: r5=(8*PROJ_TTL)|PROJ_SPLIT|PROJ_ROCKET|ROCK_DIVIDE|ROCK_REDIVIDE|ROCK_BURST; // quad burst
          /*(1<<18)*/
 	break;
-default: r5=1<<22;
+ default: r5=(64*PROJ_TTL);
 }
-r5|=(1<<15);
+r5|=PROJ_ROCKET;
 makeproj(r0+r2+r2,r1+r3+r3,r2,r3,r4,r5);
 plfired=1;
 bidforsound(_Firechannel,_SampRocket,0x7e,fullpitch,0,0,2,0,CHUNK_ROCKET);
@@ -3730,7 +3748,7 @@ int r4=random();
 if ((r4&(3<<24))==0) // firing rate
 {
 makebul(r6->x,r6->y+(16<<8),(r4&(0xfe<<2))-(0xfe<<1),-((r4&(0xfe<<12))>>11),
-	_bulspritebase+8,1<<24);
+	_bulspritebase+8,(1<<8)*BULL_TTL);
 }
 platfireskip:
 return;
@@ -3741,7 +3759,7 @@ void platsurefire(alent* r6)
 // R3: best negative (up)
 int r4=random();
 makebul(r6->x,r6->y+(16<<8),(r4&(0xfe<<2))-(0xfe<<1),-((r4&(0xfe<<12))>>11),
-	_bulspritebase+14,1<<24);
+	_bulspritebase+14,(1<<8)*BULL_TTL);
 }
 
 //.colchcon

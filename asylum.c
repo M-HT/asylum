@@ -68,6 +68,8 @@ const double PI=3.1415926535897932384626433832795028841971;
 char storearea[STOREAREALEN];
 SDL_Surface* ArcScreen;
 SDL_Surface* DecompScreen;
+SDL_Surface* backsprite;
+SDL_Rect clip;
 
 const char _platblim=64;
 const char _blim=112;
@@ -356,7 +358,6 @@ char* tmp_blockadr;
 void **fspvars;
 //void *fspplot;
 char* backadr;
-char* backuse;
 int framectr;
 int boardwidth;
 int xtemp;
@@ -376,7 +377,6 @@ int fuelexploctr;
 //lifeseed2=o+92
 Uint32* strengthcoltab;
 int laststrengthframe;
-int cliplx; int cliply; int cliphx; int cliphy;
 int snuffctr;
 fastspr_sprite charsadr[48];
 int* addtabadr;
@@ -2643,37 +2643,37 @@ int r0=(r11->r5)&0xffff;
 int r1=	(r11->x>>8)-(xpos>>8)+_xofs;
 int r2=r8+	(r11->y>>8)-(ypos>>8)+_yofs;
 fsphy=r2;
-if (fsphy<=cliphy)
+if (fsphy<=clip.y+clip.h)
 if (fsply<fsphy)
 {
 fsphx=r1;
 swi_fastspr_setclipwindow(fsplx,fsply,fsphx,fsphy);
-if (fsphx<=cliphx)
+if (fsphx<=clip.x+clip.w)
 if (fsplx<fsphx)
 	fspplot(blockadr,r0,fsphx+r8,fsphy+r8);
-fsphx=cliphx;
+fsphx=clip.x+clip.w;
 fsplx=r1;
 swi_fastspr_setclipwindow(fsplx,fsply,fsphx,fsphy);
-if (fsplx>=cliplx)
-if (fsphx>cliplx)
+if (fsplx>=clip.x)
+if (fsphx>clip.x)
 	fspplot(blockadr,r0,fsplx-r8,fsphy+r8);
 }
 nodyingtop:
-fsphy=cliphy;
-fsplx=cliplx;
+fsphy=clip.y+clip.h;
+fsplx=clip.x;
 fsply=r2;
-if (fsply>=cliply)
+if (fsply>=clip.y)
 if (fsply<fsphy)
 {
 fsphx=r1;
 swi_fastspr_setclipwindow(fsplx,fsply,fsphx,fsphy);
-if (fsphx<=cliphx)
+if (fsphx<=clip.x+clip.w)
 if (fsplx<fsphx)
 	fspplot(blockadr,r0,fsphx+r8,fsply-r8);
-fsphx=cliphx;
+fsphx=clip.x+clip.w;
 fsplx=r1;
 swi_fastspr_setclipwindow(fsplx,fsply,fsphx,fsphy);
-if (fsplx>=cliplx)
+if (fsplx>=clip.x)
 if (fsphx>fsplx)
 	fspplot(blockadr,r0,fsplx-r8,fsply-r8);
 }
@@ -4468,16 +4468,16 @@ int r8=15-(r0&15);
 int r9=15-(r1&15);
 
 
-int r5=0, rF=0, r7=(r1>>4);
+int r5=0, r7=(r1>>4);
 if (r7<0) {r5=-r7; r7=0;}
 
 // Draw midground elements
-for (;/*ins2:*/ (r5<14)&&(r7<boardadr->height);r5++,r7++,rF++) {
-int r4=0,rf=0,r6=((xpos>>8)-144)>>4;
+for (;/*ins2:*/ (r5<14)&&(r7<boardadr->height);r5++,r7++) {
+int r4=0,r6=((xpos>>8)-144)>>4;
 if (r6<0) {r4=-r6; r6=0;}
-for (;/*ins1:*/ (r4<21)&(r6<boardadr->width);/*skip1:*/ r4++,r6++,rf++) {
+for (;/*ins1:*/ (r4<21)&(r6<boardadr->width);/*skip1:*/ r4++,r6++) {
 r0=*(boardadr->contents+boardwidth*r7+r6);
-if ((r0>=8)&&(r0<12)) fspplot(blockadr,r0,(r4<<4)-rf+10+r8,(r5<<4)-rF+7+r9);}}
+if ((r0>=8)&&(r0<12)) fspplot(blockadr,r0,(r4<<4)-r4+10+r8,(r5<<4)-r5+7+r9);}}
 // Now foreground ones
 r5=0, r7=(r1>>4);
 if (r7<0) {r5=-r7; r7=0;}
@@ -4512,79 +4512,25 @@ fspplot(blockadr,r0,(r4<<4)+r8,(r5<<4)+r9);
 skip2:;
 }
 
-#define FORTYEIGHT (48*4)
-#define TTOFFSET (hbytes*32)
-
-char backdrop_to_blit[FORTYEIGHT];
-
 void backdrop()
 {
   //  swi_fastspr_clearwindow();
-SDL_LockSurface(ArcScreen);
+static SDL_Rect back_to_blit;
+static SDL_Rect loc_to_blit;
 screentop=screenuse+hbytes*8+4*16;
 
 int r3=((xpos>>8)-(xpos>>10)+3072-768); // parallax
-backuse=backadr+(r3&3)*1536*sizeof(Uint32);
-int r2=11-((r3>>2)%12);
-
-// self-modifying code went here on ARM:
-// modpos[0]=backtab[0]; modpos[1]=backtab[1];
+int r2=(44+48-(r3%48))%48;
 
 int r4=0x1f&((ypos>>8)-(ypos>>10)); // parallax
 
-for (int r3=0;r3<32;r3++)
-{
-l4:
-char* r14=screentop+r3*hbytes;
-char* r12=backuse+r4*FORTYEIGHT;
 modpos:
-memcpy(backdrop_to_blit+r2*4*4,r12,(12-r2)*4*4);
-memcpy(backdrop_to_blit,r12+(12-r2)*4*4,r2*4*4);
+ back_to_blit.x = 48-r2; back_to_blit.y = r4;
+ back_to_blit.w = 48; back_to_blit.h = 32;
 
-memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET;
-memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET;
-memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET;
-memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET;
-memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-r14+=TTOFFSET;
-memcpy(r14     ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT  ,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*2,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*3,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*4,backdrop_to_blit,FORTYEIGHT);
-memcpy(r14+FORTYEIGHT*5,backdrop_to_blit,FORTYEIGHT);
-if (++r4>31) r4=0;
-}
-SDL_UnlockSurface(ArcScreen);
+ for (loc_to_blit.y = 8; loc_to_blit.y < 6*32; loc_to_blit.y+=32)
+   for (loc_to_blit.x = 16; loc_to_blit.x < 6*48; loc_to_blit.x+=48)
+     SDL_BlitSurface(backsprite, &back_to_blit, ArcScreen, &loc_to_blit);
 }
 
 int escapehandler()
@@ -4653,18 +4599,14 @@ swi_blitz_screenflush();
 
 void setfullclip()
 {
-cliplx=_lowx; cliply=_lowy;
-cliphx=_highx; cliphy=_highy;
+clip.x=_lowx; clip.y=_lowy;
+clip.w=_highx-_lowx;
+clip.h=_highy-_lowy;
 writeclip();
-return;
 }
 
 void writeclip()
 {
-  static SDL_Rect clip;
-  clip.x=cliplx; clip.y=cliply;
-  clip.w=cliphx-cliplx;
-  clip.h=cliphy-cliply;
   SDL_SetClipRect(ArcScreen,&clip);
 }
 
@@ -4742,7 +4684,7 @@ void showchatscores()
 decomptonot(chatscreenadr);
 }
 
-int palette[256], alt_palette[256];
+int palette[256];
 
 void init_palette()
 {
@@ -4752,13 +4694,6 @@ void init_palette()
       + ((i&0x80)?0x880000:0) + ((i&0x40)?0x8800:0)
       + ((i&0x20)?0x4400:0) + ((i&0x10)?0x88:0)
       + ((i&0x08)?0x440000:0) + ((i&0x04)?0x44:0)
-      + (i&0x03)*0x111111;
-  for (int i=0;i<256;i++)
-    alt_palette[i]
-      = 0xff000000 // opaque
-      + ((i&0x80)?0x88:0) + ((i&0x40)?0x8800:0)
-      + ((i&0x20)?0x4400:0) + ((i&0x10)?0x880000:0)
-      + ((i&0x08)?0x44:0) + ((i&0x04)?0x440000:0)
       + (i&0x03)*0x111111;
 }
 
@@ -5059,7 +4994,7 @@ char sound7[] = "-7. Overdrive";
 void tunesound()
 {
 showchatscreen();
-swi_fastspr_setclipwindow(20,20,320-20-1,255-20);
+swi_fastspr_setclipwindow(20,20,319-20,255-20);
  for (;;/*tunesoundloop:*/soundupdate(),swi_stasis_link(1,1),swi_sound_control(1,-15,0x20,0xfe))
 {
 tunesoundins:
@@ -5112,7 +5047,7 @@ showchatscreen();
 wipetexttab();
 if (soundtype==2) swi_bodgemusic_start(1,0);
 swi_bodgemusic_volume(musicvol);
-swi_fastspr_setclipwindow(20,20,320-20-1,255-20);
+swi_fastspr_setclipwindow(20,20,319-20,255-20);
 message(80,32,0,0,"Change volume");
 message(48,96,0,0,"1. Louder effects");
 message(48,116,0,0,"2. Quieter effects");
@@ -5246,7 +5181,7 @@ cheatpermit=0;
 frameinc=1;
 setfullclip();
 showchatscreen();
- swi_fastspr_setclipwindow(20,20,320-20-1,255-20);
+ swi_fastspr_setclipwindow(20,20,319-20,255-20);
  swi_fastspr_clearwindow();
 wipetexttab();
  message(2048,_x,0,_v,"Digital Psychosis");
@@ -5794,7 +5729,7 @@ void showerror()
 {
 frameinc=1;
 showchatscreen();
-swi_fastspr_setclipwindow(20,20,320-20-1,255-20);
+swi_fastspr_setclipwindow(20,20,319-20,255-20);
 swi_fastspr_clearwindow();
 wipetexttab();
  message(72,200,0,0,"RET - Try Again");
@@ -5805,7 +5740,7 @@ void showerrorok()
 {
 frameinc=1;
 showchatscreen();
-swi_fastspr_setclipwindow(20,20,320-20-1,255-20);
+swi_fastspr_setclipwindow(20,20,319-20,255-20);
 swi_fastspr_clearwindow();
 wipetexttab();
  message(72,200,0,0,"RET - OK");
@@ -6128,24 +6063,12 @@ boardhighlim=boardlowlim+boardadr->width*boardadr->height;
 
 void backprep()
 {
-  // This used to be multiply callable.  Now it's not.
-Uint32* ba = (Uint32*)backadr;
- for (int i=32*48-1;i>=0;i--) ba[i] = alt_palette[backadr[i]];
-backexec(ba+32*48,ba);
-backexec(ba+64*48,ba+32*48);
-backexec(ba+96*48,ba+64*48);
-}
-
-void backexec(Uint32* dst,Uint32* src)
-{
-for (int r4=32;r4>0;r4--)
-{
- l6:;
-Uint32 r2=*(src++);
-l5: memcpy(dst,src,47*sizeof(Uint32));
-dst+=47; src+=47;
-*(dst++)=r2;
-}
+SDL_LockSurface(backsprite);
+Uint32* ba = (Uint32*) backsprite->pixels;
+ for (int j=63; j>=0; j--)
+   for (int i=95; i>=0; i--)
+     ba[j*96+i] = palette[backadr[(j%32)*48+(i%48)]];
+SDL_UnlockSurface(backsprite);
 }
 
 void prepstrength()
@@ -6363,6 +6286,8 @@ osbyte_f1(1); //get non-shadow screen bank
 ArcScreen = SDL_SetVideoMode( 320, 256, 32 /*bpp*/, SDL_HWSURFACE | (fullscreen?SDL_FULLSCREEN:0));
 DecompScreen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 256, 32,
 						  0xff,0xff00,0xff0000,0);
+// backsprite contains four copies of the backdrop tile
+ backsprite = SDL_CreateRGBSurface(SDL_HWSURFACE, 2*48, 2*32, 32, 0xff,0xff00,0xff0000,0);
  modesize = 0; // hack: don't double buffer 320*256*4;
  hbytes = ArcScreen->pitch;
  SDL_LockSurface(ArcScreen);

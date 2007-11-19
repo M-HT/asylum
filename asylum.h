@@ -288,7 +288,6 @@ void scorezero();
 void wipealtab();
 void boardreg();
 void backprep();
-void backexec(Uint32* dst,Uint32* src);
 void prepstrength();
 void screensave();
 void getvars();

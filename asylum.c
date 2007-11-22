@@ -69,6 +69,9 @@ char storearea[STOREAREALEN];
 SDL_Surface* ArcScreen;
 SDL_Surface* DecompScreen;
 SDL_Surface* backsprite;
+SDL_Surface* wipescr;
+SDL_Surface* redness;
+SDL_Surface* greyness;
 SDL_Rect clip;
 
 const char _platblim=64;
@@ -241,8 +244,6 @@ bulent bulofs[_bullim];
 alent saveareaalents[_savearealen+1]; // &C000
 int saveareaints[8];
 char highscorearea[13*5+1];//=&D000
-char wipescrst[128*16*4];//=&D100
-
 
 /*soundtabvol=0
 soundtabsample=1
@@ -375,12 +376,9 @@ int fueltabctr;
 int fuelexploctr;
 //lifeseed1=o+88
 //lifeseed2=o+92
-Uint32* strengthcoltab;
-int laststrengthframe;
 int snuffctr;
 fastspr_sprite charsadr[48];
 int* addtabadr;
-char* screennotuse;
 //int rnseed;
 projent* projadr;
 int projctr;
@@ -419,12 +417,9 @@ char* storageend;
 char* gamescreenadr;
 char* chatscreenadr;
 int windctr;
-int xmode;
 
 // consecutive words after vdu=&300
-char *screenstart;
-int modesize, hbytes;
-char *screenuse, *screentop;
+int hbytes;
 
 // consecutive words after pl=&340
 int xpos, ypos, initplx, initply, hvec, vvec;
@@ -440,7 +435,6 @@ void init()
 {
 storage=storearea;
 storageend=storearea+STOREAREALEN;
-xmode=15;
 gethandlers();
 
 // SWI "FastSpr_GetAddress";
@@ -451,9 +445,7 @@ vduread();
 swi_removecursors();
 bank=1;
 switchbank()      ;//set up bank variables
-switchfspbank();
 switchbank()      ;//set up bank variables
-switchfspbank();
 checkifarm3();
  if (getfiles()) abort_game();
 setdefaults();
@@ -564,8 +556,6 @@ wakeupal();
 if (cheatpermit==1) cheatread();
 scorewipe();
 showscore();
-if (xmode==49)
-	swi_blitz_screenexpand(screenuse);
 frameinc=((gearchange==0)?2:1);
 swi_blitz_wait(frameinc);
 if ((rate50!=1)&&(frameinc<2)) //rate 25 but one frame passed
@@ -579,8 +569,7 @@ rateskip:
 
 framectr+=frameinc;
 
-switchbankins();
-switchfspbank();
+switchbank();
 swi_blitz_smallretrieve();
 if (snuffctr>=300)
 {
@@ -613,23 +602,10 @@ bulcolchptr=bulcolchtab; //reset bullet checking table
 
 void switchbank()
 {
-if (xmode==49) swi_blitz_screenexpand(screenuse);
-switchbankins();
-}
-
-void switchbankins()
-{
-bank^=3;
 osbyte_71(); // i.e. 0x71
 swi_blitz_screenretrieve();
- SDL_Flip(ArcScreen);
-screenuse=screenstart;
-screennotuse=screenstart;
-if (bank==1) screenuse=screenstart+modesize;
-else screennotuse=screenstart+modesize;
+SDL_Flip(ArcScreen);
 }
-
-void switchfspbank() {swi_fastspr_screenbank(bank);}
 
 void bidforsoundforce(int r0,char r1,char r2,int r3,int r4,int r5,char r6,int r7,Mix_Chunk* chunk)
 {
@@ -664,7 +640,6 @@ void showtext()
 {
 texthandler();
 switchbank();
-switchfspbank();
 }
 
 void texthandler()
@@ -1263,45 +1238,23 @@ deathmessage();
 return;
 }
 
-void wipearea(int r0,int r1,int r2,int r3)
-{
-int ro=r1*hbytes;
-int rz=r3*hbytes;
-SDL_LockSurface(ArcScreen);
-char* r11=wipescrst;
-char* r10=screenuse+r0*4+ro-(rz>>1) /* R3 is a multiple of 2 */
-                         -((r2*4)>>1);/* R2 is a multiple of 8 */
-for (int r9=16;r9>0;r9--)
-{
-wipetest:
-memcpy(r10,r11,128*4);
-r11+=128*4;
-r10+=hbytes;
-}
-SDL_UnlockSurface(ArcScreen);
+void scorewipe() {
+ static SDL_Rect scorearea;
+ scorearea.x = 160-128/2;
+ scorearea.y = _scoreyofs-16/2;
+ scorearea.w = 128; scorearea.h = 16;
+ releaseclip();
+ SDL_BlitSurface(wipescr, NULL, ArcScreen, &scorearea);
+ writeclip();
 }
 
-void wipearearead(int r0,int r1,int r2,int r3)
-{
-int ro=r1*hbytes;
-int rz=r3*hbytes;
-SDL_LockSurface(ArcScreen);
-char* r11=wipescrst;
-char* r10=screenuse+r0*4+ro-(rz>>1) /* R3 is a multiple of 2 */
-                         -((r2*4)>>1);/* R2 is a multiple of 8 */
-for (int r9=16;r9>0;r9--)
-{
-wipetest2:
-memcpy(r11,r10,128*4);
-r11+=128*4;
-r10+=hbytes;
+void scorewiperead() {
+ static SDL_Rect scorearea;
+ scorearea.x = 160-128/2;
+ scorearea.y = _scoreyofs-16/2;
+ scorearea.w = 128; scorearea.h = 16;
+ SDL_BlitSurface(ArcScreen, &scorearea, wipescr, NULL);
 }
-SDL_UnlockSurface(ArcScreen);
-}
-
-void scorewipe() {wipearea(160,_scoreyofs,16*8,16);}
-
-void scorewiperead() {wipearearead(160,_scoreyofs,16*8,16);}
 
 void showscore()
 {
@@ -1371,7 +1324,6 @@ else carry=0;
 
 void showstrength()
 {
-SDL_LockSurface(ArcScreen);
 if (lagerctr!=0)
 {
 if ((lagerctr-=frameinc)<0)  lagerctr=0;
@@ -1381,62 +1333,21 @@ laststrength+=frameinc<<6;
 if (laststrength>_strengthinit)  laststrength=_strengthinit;
 }
  nolager:;
-Uint32* r10=((Uint32*)screenuse)+_strengthxofs+(hbytes/4)*_strengthyofs;
 int r3=plstrength;
 if (r3>_strengthmax)  r3=_strengthmax;
 if (r3<0)  r3=0;
 r3>>=8;
-int r7=0;
-loop31:
-for (;r3>0;r3-=1)
-{
-Uint32* r4=r10;
-loop32:
-for (int r6=6;r6>0;r6--)
-{
-  *r4=*(strengthcoltab+(random()&0x1f));
-r4+=hbytes/4;
-}
-r10++;
-r7++;
-}
-
-writeblue:
-r10=((Uint32*)screenuse)+_strengthxofs+(hbytes/4)*_strengthyofs;
-r10+=(spstrengthmax>>8);
-if (framectr-laststrengthframe>2)  laststrengthframe=framectr;
-
-loop35:
-for (;r7<=spstrengthmax>>8;)
-{
-Uint32* r4=r10;
-loop34:
-for (int r6=6;r6>0;r6--)
-{
-  *r4=*(strengthcoltab+0x24+(random()&0x1f));
-r4+=hbytes/4;
-}
-r10--;
-r7++;
-}
-
-int mask;
-writemaskedlife:
-mask=0;
-if (r3>=-3)  mask+=0xff;
-if (r3>=-2)  mask+=0xff00;
-if (r3>=-1)  mask+=0xff0000;
-if (r3<0) 
-{
-Uint32* r4=r10;
-for (int r6=6;r6>0;r6--)
-{
-loop33:
-*r4=(*(strengthcoltab+0x24+(random()&0x1f))&~mask)|((*r4)&mask);
-r4+=hbytes/4;
-}
-}
-SDL_UnlockSurface(ArcScreen);
+  releaseclip();
+ static SDL_Rect strengthloc, strengthpart;
+ strengthloc.x=_strengthxofs;
+ strengthloc.y=_strengthyofs;
+ strengthpart.x=0; strengthpart.y=random()&0x1f;
+ strengthpart.w=(spstrengthmax>>8)+1;
+ strengthpart.h=6;
+SDL_BlitSurface(greyness, &strengthpart, ArcScreen, &strengthloc);
+ strengthpart.w=r3;
+SDL_BlitSurface(redness, &strengthpart, ArcScreen, &strengthloc);
+  writeclip();
 return;
 }
 
@@ -4517,7 +4428,6 @@ void backdrop()
   //  swi_fastspr_clearwindow();
 static SDL_Rect back_to_blit;
 static SDL_Rect loc_to_blit;
-screentop=screenuse+hbytes*8+4*16;
 
 int r3=((xpos>>8)-(xpos>>10)+3072-768); // parallax
 int r2=(44+48-(r3%48))%48;
@@ -4556,7 +4466,6 @@ if (r9!=0)
 {
 r9--;
 switchbank();
-switchfspbank();
 swi_fastspr_clearwindow();
 texthandler();
 }
@@ -4590,10 +4499,6 @@ rejoin();
 
 void copyscreen()
 {
-//  char* r0=screenstart;
-//  char* r2=screenstart+modesize;
-//for (int r1=0x14000;r1>0;r1-=1)
-//     loop30: *(r2++)=*(r0++);
 swi_blitz_screenflush();
 }
 
@@ -4668,7 +4573,6 @@ void showlives()
 releaseclip();
 fspplot(charsadr,lives&7,44,234);
 switchbank();
-switchfspbank();
 fspplot(charsadr,lives&7,44,234);
 writeclip();
 }
@@ -4681,7 +4585,7 @@ copyscreen();
 
 void showchatscores()
 {
-decomptonot(chatscreenadr);
+decomp(chatscreenadr);
 }
 
 int palette[256];
@@ -4697,11 +4601,7 @@ void init_palette()
       + (i&0x03)*0x111111;
 }
 
-void decomptonot(char* r11) {decompins(screenuse,r11);}
-
-void decomp(char* r11) {decompins(screenstart,r11);}
-
-void decompins(char* rr10,char* r11) 
+void decomp(char* r11) 
 {
  static SDL_Rect from;
  static SDL_Rect to;
@@ -4709,7 +4609,7 @@ void decompins(char* rr10,char* r11)
  to.w = ArcScreen->w; to.h = ArcScreen->h;
  from.w = DecompScreen->w; from.h = DecompScreen->h;
   SDL_LockSurface(DecompScreen);
-  Uint32* r10=(Uint32*)DecompScreen->pixels; //(Uint32*)rr10;
+  Uint32* r10=(Uint32*)DecompScreen->pixels;
   Uint32* r9=0x14000+r10;
 
   r11+=68;
@@ -5209,7 +5109,6 @@ if (scroll!=0)
 {
 scroll--;
 switchbank();
-switchfspbank();
 swi_fastspr_clearwindow();
 texthandler();
 }
@@ -5918,7 +5817,6 @@ void showhst()
 {
 swi_blitz_wait(0);
 switchbank();
-switchfspbank();
 showchatscores();
 wipetexttab();
  message(64,32,0,0,"Zone High Scores");
@@ -6286,27 +6184,28 @@ osbyte_f1(1); //get non-shadow screen bank
 ArcScreen = SDL_SetVideoMode( 320, 256, 32 /*bpp*/, SDL_HWSURFACE | (fullscreen?SDL_FULLSCREEN:0));
 DecompScreen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 256, 32,
 						  0xff,0xff00,0xff0000,0);
+ wipescr = SDL_CreateRGBSurface(SDL_HWSURFACE, 128, 16, 32, 0xff,0xff00,0xff0000,0);
 // backsprite contains four copies of the backdrop tile
  backsprite = SDL_CreateRGBSurface(SDL_HWSURFACE, 2*48, 2*32, 32, 0xff,0xff00,0xff0000,0);
- modesize = 0; // hack: don't double buffer 320*256*4;
  hbytes = ArcScreen->pitch;
- SDL_LockSurface(ArcScreen);
- screenstart = (char*)(ArcScreen->pixels);
- SDL_UnlockSurface(ArcScreen);
   /* initialise screenstart(149), modesize(7), hbytes(6) */
-screenuse=screenstart;
  SDL_ShowCursor(SDL_DISABLE);
 }
 
-Uint32 strengthcol[72];
-
-void getstrengthtab() {strengthcoltab = strengthcol;}
+void getstrengthtab() {;}
 
 void init_strengthcol() {
-  for (int i=0;i<36;i++) {
-    strengthcol[i] = 0xff000000+0x110000*(11+(i%5)); // varying shade of red
-    strengthcol[i+36] = 0xff000000+0x111111*(3&i); // varying shade of dark grey
-  }}
+  redness = SDL_CreateRGBSurface(SDL_HWSURFACE, (_strengthmax>>8), 32+6, 32, 0xff,0xff00,0xff0000,0);
+  greyness = SDL_CreateRGBSurface(SDL_HWSURFACE, (_strengthmax>>8), 32+6, 32, 0xff,0xff00,0xff0000,0);
+ SDL_LockSurface(redness);
+ SDL_LockSurface(greyness);
+ for (int i=0;i<(_strengthmax>>8)*(32+6);i++) {
+   ((Uint32*)redness->pixels)[i] = 0xff000000+0x11*(11+(random()%5)); // varying shade of red
+   ((Uint32*)greyness->pixels)[i] = 0xff000000+0x111111*(3&random()); // varying shade of dark grey
+  }
+ SDL_UnlockSurface(greyness);
+ SDL_UnlockSurface(redness);
+}
 
 int addtab[] = {10000000, 1000000, 100000, 10000, 1000, 100, 10, 1};
 
@@ -6572,7 +6471,6 @@ int swi_osfile(int op, const char* name, char* start, char* end) {
 int swi_joystick_read(int a,int* x,int* y) {;}
 
 void swi_blitz_wait(int d) { SDL_Delay(d*10);}
-void swi_blitz_screenexpand(char* screen) {;}
 void swi_blitz_smallretrieve() {;}
 void swi_blitz_screenretrieve() {;}
 void swi_blitz_screenflush() { SDL_Flip(ArcScreen);}
@@ -6648,7 +6546,6 @@ int swi_blitz_hammerop(int op, char* name, char* path, char* space) {
   return p;
 }
 
-void swi_fastspr_screenbank(int b) {;}
 void swi_fastspr_clearwindow() { SDL_FillRect(ArcScreen,NULL,0);}
 
 void swi_fastspr_setclipwindow(int x1, int y1, int x2, int y2) {

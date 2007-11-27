@@ -16,6 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 void fspplot(fastspr_sprite*, char, int, int);
+void relplot(fastspr_sprite*, char, int, int);
+void blokeplot(fastspr_sprite*, char, int, int);
 
 void init();
 int abort_game();
@@ -306,7 +308,7 @@ void deleteobj(alent* r11);
 void blowup(alent* r11);
 void plotarms();
 void plattoobj(char* r0);
-void decomp(char* r11);
+SDL_Surface* decomp(char* r11);
 void soundupdate();
 void insertdiscagain(char* r2);
 void gethandlers();
@@ -330,7 +332,6 @@ int osbyte_79(int c);
 int osbyte_7a();
 void osbyte_7c();
 int osbyte_81(int c);
-void osbyte_f1(char c);
 char swi_oscrc(int w,char* start,char* end,int bytes);
 FILE* swi_osfind(int op, const char* name);
 void swi_osgbpb(int n, FILE* f, char* start, char* end, int b);

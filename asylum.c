@@ -67,7 +67,8 @@ const double PI=3.1415926535897932384626433832795028841971;
 
 char storearea[STOREAREALEN];
 SDL_Surface* ArcScreen;
-SDL_Surface* DecompScreen;
+SDL_Surface* GameScreen;
+SDL_Surface* ChatScreen;
 SDL_Surface* backsprite;
 SDL_Surface* wipescr;
 SDL_Surface* redness;
@@ -111,10 +112,6 @@ const int _windowxsize=160<<8, _windowysize=112<<8;
 #define _windspeed (1<<8)
 #define xlowlim 0
 #define ylowlim (15<<8)
-#define _lowx 16
-#define _lowy 8
-#define _highx 304
-#define _highy 200
 
 #define _neuronstoget 8
 
@@ -143,16 +140,9 @@ int fsplx, fsply, fsphx, fsphy;
 #define _rockettablen 192
 
 #define _strengthmax (108<<8)
-#define spstrengthmax (_strengthmax-(1<<8))
 #define _strengthinit (108<<8)
 #define _strengthxofs 108
 #define _strengthyofs 239
-
-#define _bonusxplace 34
-#define _bonusyplace 232
-
-#define _scorexofs (160-(16*7)/2)
-#define _scoreyofs 220
 
 #define bombloss (4<<8)
 #define atomloss (32<<8)
@@ -184,6 +174,21 @@ int fsplx, fsply, fsphx, fsphy;
 #define _Decoration (16)
 #define _Extender (17)
 #define _Alien1 (18)
+
+struct vduvar
+{
+  int width; int height;
+  int gamex; int gamey;
+  int gameh; int gamew;
+  int backh; int backw;
+  int scorex; int scorey;
+  int sprw; int sprh;
+  int xblocks; int yblocks;
+  int livesx; int livesy;
+  int strengthx; int strengthy;
+  int strengthw; int strengthh;
+  int bonusx; int bonusy; int bonush;
+} vduvar;
 
 typedef struct fastspr_sprite { int x; int y;
   SDL_Surface* s;} fastspr_sprite;
@@ -417,9 +422,6 @@ char* storageend;
 char* gamescreenadr;
 char* chatscreenadr;
 int windctr;
-
-// consecutive words after vdu=&300
-int hbytes;
 
 // consecutive words after pl=&340
 int xpos, ypos, initplx, initply, hvec, vvec;
@@ -677,12 +679,12 @@ textdone:;
 //textdelete: r11->count = 0;
 }
 
-void startmessage() {message(1128,136,0,0,"Let's Go!");}
+void startmessage() {message(1000+vduvar.gamex+vduvar.gamew/2-32,vduvar.gamey+(vduvar.gameh*2)/3,0,0,"Let's Go!");}
 
 void deathmessage()
 {
-message(72,208,0,-1,"¤ Snuffed It! ¤");
-if (lives==0) message(72,256,0,-1,"-  GAME OVER  -");
+message(vduvar.gamex+vduvar.gamew/2-88,vduvar.gamey+vduvar.gameh+8,0,-1,"¤ Snuffed It! ¤");
+if (lives==0) message(vduvar.gamex+vduvar.gamew/2-88,vduvar.gamey+vduvar.gameh+56,0,-1,"-  GAME OVER  -");
 }
 
 void alfire()
@@ -813,7 +815,7 @@ if (masterplotal == 0) continue;
 int r0=(r11->type);
 if ((r0==_bulspritebase+8) || (r0==_bulspritebase+10))
 	r0 ^= (framectr & 4) >> 2;
-fspplot(exploadr,r0,((r11->x)>>8)-(xpos>>8)+_xofs,((r11->y)>>8)-(ypos>>8)+_yofs);
+relplot(exploadr,r0,r11->x,r11->y);
 continue;
 }
 }
@@ -972,7 +974,7 @@ if ((r1<16)||
 {
 projhitins:
 if (masterplotal==0) continue;
-fspplot(blokeadr,r11->type,_xofs+(r11->x>>8)-(xpos>>8),_yofs+(r11->y>>8)-(ypos>>8));
+relplot(blokeadr,r11->type,r11->x,r11->y);
 continue;
 }
 projhitcont:
@@ -1206,10 +1208,10 @@ if (plstrength>=laststrength)
 laststrength-=1<<8;
 int r2, r1=(framectr>>1)&7;
  int r0=_starssprbase+r1;
-if ((r1&3)==0)  r2=90+plotterofs;
-else if (r1>4)  r2=89+plotterofs;
-else            r2=91+plotterofs;
-fspplot(blokeadr,r0,160,r2);
+if ((r1&3)==0)  r2=-6;
+else if (r1>4)  r2=-7;
+else            r2=-5;
+blokeplot(blokeadr,r0,0,r2);
 
 int r4=laststrength-plstrength;
 if (r4==0)  return;
@@ -1240,8 +1242,8 @@ return;
 
 void scorewipe() {
  static SDL_Rect scorearea;
- scorearea.x = 160-128/2;
- scorearea.y = _scoreyofs-16/2;
+ scorearea.x = vduvar.scorex;
+ scorearea.y = vduvar.scorey-16/2;
  scorearea.w = 128; scorearea.h = 16;
  releaseclip();
  SDL_BlitSurface(wipescr, NULL, ArcScreen, &scorearea);
@@ -1250,8 +1252,8 @@ void scorewipe() {
 
 void scorewiperead() {
  static SDL_Rect scorearea;
- scorearea.x = 160-128/2;
- scorearea.y = _scoreyofs-16/2;
+ scorearea.x = vduvar.scorex;
+ scorearea.y = vduvar.scorey-16/2;
  scorearea.w = 128; scorearea.h = 16;
  SDL_BlitSurface(ArcScreen, &scorearea, wipescr, NULL);
 }
@@ -1260,8 +1262,8 @@ void showscore()
 {
   releaseclip();
   int i=0;
-  int x=_scorexofs;
-  int y=_scoreyofs;
+  int x=vduvar.scorex;
+  int y=vduvar.scorey;
   
   if (plscore[0]==0)
     {
@@ -1336,16 +1338,15 @@ if (laststrength>_strengthinit)  laststrength=_strengthinit;
 int r3=plstrength;
 if (r3>_strengthmax)  r3=_strengthmax;
 if (r3<0)  r3=0;
-r3>>=8;
   releaseclip();
  static SDL_Rect strengthloc, strengthpart;
- strengthloc.x=_strengthxofs;
- strengthloc.y=_strengthyofs;
+ strengthloc.x=vduvar.strengthx;
+ strengthloc.y=vduvar.strengthy;
  strengthpart.x=0; strengthpart.y=random()&0x1f;
- strengthpart.w=(spstrengthmax>>8)+1;
- strengthpart.h=6;
+ strengthpart.w=vduvar.strengthw;
+ strengthpart.h=vduvar.strengthh;
 SDL_BlitSurface(greyness, &strengthpart, ArcScreen, &strengthloc);
- strengthpart.w=r3;
+ strengthpart.w=(vduvar.strengthw*r3)/_strengthmax;
 SDL_BlitSurface(redness, &strengthpart, ArcScreen, &strengthloc);
   writeclip();
 return;
@@ -1589,10 +1590,10 @@ void moval()
 //BL writeclip - active for release version
 if (extending) extending--;
 fuelexploctr=extending;  /* ?!?! */
-sprlx=xpos-_windowxsize;
-sprhx=xpos+_windowxsize;
-sprly=ypos-_windowysize;
-sprhy=ypos+_windowysize;
+sprlx=xpos-(((vduvar.xblocks+2)*8)<<8);
+sprhx=xpos+(((vduvar.xblocks+2)*8)<<8);
+sprly=ypos-(((vduvar.yblocks+2)*8)<<8);
+sprhy=ypos+(((vduvar.yblocks+2)*8)<<8);
 
 alent* r11=aladr;
 for (int r9=_alno; r9>0; r9-=8)
@@ -1805,8 +1806,7 @@ if (plotal==0) return;
 r0=fntranslate(r11->x+r11->dx*15,r11->y);
 f=r11->r5&0xff;
 if ((*r0!=0)&&(*r0!=f)&&(*r0!=f+1)&&(*r0!=f+2)) return;
-fspplot(blockadr,r11->r5&0xff,
-(r11->x>>8)-((xpos-(r11->dx*7))>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(blockadr,r11->r5&0xff,r11->x+r11->dx*7,r11->y);
 }
 
 int alspintab[40];
@@ -1840,8 +1840,8 @@ if (abs(r11->y-ypos)>_sleeprange) alsleep(1,r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,8+(r11->dx>0)*2+((framectr&8)>>3),
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs+8);
+relplot(alspradr,8+(r11->dx>0)*2+((framectr&8)>>3),
+	r11->x,r11->y+(8<<8));
 }
 
 void alien2(alent* r11)
@@ -1868,8 +1868,7 @@ if (abs(r11->y-ypos)>_sleeprange) alsleep(2,r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,0,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,0,r11->x,r11->y);
 }
 
 
@@ -1898,8 +1897,7 @@ if ((random()&0x3f)==0) alshoot(r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,1,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,1,r11->x,r11->y);
 }
 
 void alien4(alent* r11)
@@ -1931,10 +1929,8 @@ if ((r11->r5&0xffff)==0) r11->r5=0;
 if (plotal==0) return;
 
  int x,y;
-fspplot(alspradr,2,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
-fspplot(alspradr,4+((r11->r5>>24)&3),
-	x=(r11->x>>8)-(xpos>>8)+_xofs,y=(r11->y>>8)-(ypos>>8)+_yofs-7);
+relplot(alspradr,2,r11->x,r11->y);
+relplot(alspradr,4+((r11->r5>>24)&3),r11->x,r11->y-(7<<8));
 if (r11->r5&(1<<31)) return;
 int f=(r11->r5>>26)&3;
 int r0=(r11->r5>>24)&3;
@@ -1942,7 +1938,7 @@ int* r3=alspintab+r0*2;
 for (int r4=4;r4>0;r4--)
 {
 loop81:
-fspplot(exploadr,_bulspritebase+((r4+f)&3),x+(r3[0]>>8),y+(r3[1]>>8));
+relplot(exploadr,_bulspritebase+((r4+f)&3),r11->x+r3[0],r11->y-(7<<8)+r3[1]);
 r3+=8; // yes, that's 8 ints (32 bytes)
 }
 }
@@ -1977,10 +1973,8 @@ if ((r11->r5&0xffff)==0) r11->r5=0;
 if (plotal==0) return;
 
  int x,y;
-fspplot(alspradr,2,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
-fspplot(alspradr,4+((r11->r5>>24)&3),
-	x=(r11->x>>8)-(xpos>>8)+_xofs,y=(r11->y>>8)-(ypos>>8)+_yofs-7);
+relplot(alspradr,2,r11->x,r11->y);
+relplot(alspradr,4+((r11->r5>>24)&3),r11->x,r11->y-(7<<8));
 if (r11->r5&(1<<31)) return;
 int f=(r11->r5>>26)&3;
 int r0=(r11->r5>>24)&3;
@@ -1988,7 +1982,7 @@ int* r3=alspintab+r0*2;
 for (int r4=4;r4>0;r4--)
 {
 loop83:
-fspplot(exploadr,_bulspritebase+8+((r4+f)&1),x+(r3[0]>>8),y+(r3[1]>>8));
+relplot(exploadr,_bulspritebase+8+((r4+f)&1),r11->x+r3[0],r11->y-(7<<8)+r3[1]);
 r3+=8; // yes, that's 8 ints (32 bytes)
 }
 }
@@ -2022,10 +2016,8 @@ if ((r11->r5&0xffff)==0) r11->r5=0;
 if (plotal==0) return;
 
  int x,y;
-fspplot(alspradr,3,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
-fspplot(alspradr,4+((r11->r5>>24)&3),
-	x=(r11->x>>8)-(xpos>>8)+_xofs,y=(r11->y>>8)-(ypos>>8)+_yofs-7);
+relplot(alspradr,3,r11->x,r11->y);
+relplot(alspradr,4+((r11->r5>>24)&3),r11->x,r11->y-(7<<8));
 if (r11->r5&(1<<31)) return;
 int f=(r11->r5>>26)&3;
 int r0=(r11->r5>>24)&3;
@@ -2033,7 +2025,7 @@ int* r3=alspintab+r0*2;
 for (int r4=4;r4>0;r4--)
 {
 loop85:
-fspplot(exploadr,_bulspritebase+10+((r4+f)&1),x+(r3[0]>>8),y+(r3[1]>>8));
+relplot(exploadr,_bulspritebase+10+((r4+f)&1),r11->x+r3[0],r11->y-(7<<8)+r3[1]);
 r3+=8; // yes, that's 8 ints (32 bytes)
 }
 }
@@ -2105,8 +2097,7 @@ else if ((rng&0xf)==0) alshootfast(r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,16,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,16,r11->x,r11->y);
 }
 
 void alien8(alent* r11)
@@ -2136,8 +2127,7 @@ else if ((rng&0xf)==0) alshootmental(r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,16,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,16,r11->x,r11->y);
 }
 
 void alien9(alent* r11)
@@ -2166,8 +2156,7 @@ if ((rng&0x1f)==0) alshootnutterplus(r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,17,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,17,r11->x,r11->y);
 }
 
 void alien10(alent* r11)
@@ -2196,8 +2185,7 @@ if ((rng&0x1f)==0) alshootnuttermental(r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,17,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,17,r11->x,r11->y);
 }
 
 void alien11(alent* r11)
@@ -2223,8 +2211,7 @@ if ((rng&0x1f)==0) alshootfast(r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,12+(random()&3),
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,12+(random()&3),r11->x,r11->y);
 }
 
 void alien12(alent* r11)
@@ -2255,8 +2242,7 @@ if ((rng&0x1f)==0) alshootnuttermental(r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,12+(random()&3),
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,12+(random()&3),r11->x,r11->y);
 }
 
 void alien13(alent* r11)
@@ -2281,8 +2267,7 @@ if (abs(r11->y-ypos)>_sleeprange) alsleep(13,r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,8+2*(r11->dx>0)+((framectr&8)==8),
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,8+2*(r11->dx>0)+((framectr&8)==8),r11->x,r11->y);
 }
 
 void alien14(alent* r11)
@@ -2308,8 +2293,7 @@ if (abs(r11->y-ypos)>_sleeprange) alsleep(14,r11);
 
 if (plotal==0) return;
 
-fspplot(alspradr,18,
-	(r11->x>>8)-(xpos>>8)+_xofs,(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(alspradr,18,r11->x,r11->y);
 }
 
 void hamsterspecial(alent* r11)
@@ -2433,9 +2417,7 @@ char r0=(r11->r5)&0xff;
 if (r0>=(8<<2)) //explo frame length
   { r11->type=0; return;}
 if (plotal==0) return;
-fspplot(exploadr,(r11->r5>>2)&0x3f,
-	(r11->x>>8)-(xpos>>8)+_xofs,
-	(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(exploadr,(r11->r5>>2)&0x3f, r11->x, r11->y);
 }
 
 void booby(alent* r11)
@@ -2458,9 +2440,7 @@ if (r11->r5<0) r11->r5=1<<8; //trap negatives
 if (r11->r5>=140) // booby lifetime
   { r11->type=0; return;}
 if (plotal==0) return;
-fspplot(exploadr,12+((r11->r5>>2)&3),
-	(r11->x>>8)-(xpos>>8)+_xofs,
-	(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(exploadr,12+((r11->r5>>2)&3), r11->x, r11->y);
 }
 
 void ember(alent* r11)
@@ -2484,9 +2464,7 @@ if (r11->r5<0) r11->r5=1<<8; //trap negatives
 if (r11->r5>=70) // ember lifetime
   { r11->type=0; return;}
 if (plotal==0) return;
-fspplot(exploadr,8+(((r11->r5)>>2)&3),
-	(r11->x>>8)-(xpos>>8)+_xofs,
-	(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(exploadr,8+(((r11->r5)>>2)&3), r11->x, r11->y);
 }
 
 void flyingbonus(alent* r11)
@@ -2539,9 +2517,7 @@ if ((r11->x>(pllx-(8<<8)))&&((plhx+(8<<8))>r11->x)
 
 if (plotal==0) return;
 // r8=8-(r8>>17); ???
-fspplot(blockadr,r11->r6&0xff,
-	(r11->x>>8)-(xpos>>8)+_xofs,
-	(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(blockadr,r11->r6&0xff, r11->x, r11->y);
 }
 
 void dyingbonus(alent* r11)
@@ -2601,9 +2577,7 @@ r11->r5-=1;
 if ((r11->r5&0xff)==0)
 	{r11->type=0; return;}
 if (plotal==0) return;
-fspplot(blokeadr,(r11->r5>>8),
-	(r11->x>>8)-(xpos>>8)+_xofs,
-	(r11->y>>8)-(ypos>>8)+_yofs);
+relplot(blokeadr,(r11->r5>>8), r11->x, r11->y);
 }
 
 
@@ -2676,10 +2650,8 @@ platins(r11,_platno+14);
 void platins(alent* r11, char r9)
 {
 if (plotal==0) return;
-int r1=(r11->x>>8)-(xpos>>8)+_xofs;
-int r2=(r11->y>>8)-(ypos>>8)+_yofs;
-fspplot(blockadr,r9,r1-8,r2);
-fspplot(blockadr,r9+1,r1+8,r2);
+relplot(blockadr,r9,r11->x-(8<<8),r11->y);
+relplot(blockadr,r9+1,r11->x+(8<<8),r11->y);
 }
 
 //aldone:
@@ -2791,14 +2763,14 @@ if ((r6[0]>=_platblim)||(r6[1]>=_platblim)) nodown(r11);
 
 void playerplot()
 {
-fsphy=120;
-swi_fastspr_setclipwindow(20,20,320-20,120);
+fsphy=vduvar.gamey+(vduvar.gameh/2)-(vduvar.sprh/2)+24;
+swi_fastspr_setclipwindow(vduvar.gamex,vduvar.gamey,vduvar.gamex+vduvar.gamew,fsphy);
 if (snuffctr)
 {
 snuffhandler:
 snuffctr+=frameinc;
 plotterofs=((snuffctr-96<0)?0:(snuffctr-96))>>1;
-fspplot(blokeadr,70,160,104+plotterofs);
+blokeplot(blokeadr,70,0,8);
 // goto playerplotins;
 seestars();
 writeclip();
@@ -2830,15 +2802,15 @@ if (plface==1) plframe+=3;
 if (electrocuting)
 {
 plotskel:
-fspplot(blokeadr,_skelspriteno+(plface==1),160,plotterofs+104);
+blokeplot(blokeadr,_skelspriteno+(plface==1),0,8);
 plotskelins:
 seestars();
 writeclip();
 return;
 }
 
-fspplot(blokeadr,(plface==1)?1:0,160,plotterofs+104);
-fspplot(blokeadr,plframe+6,160,plotterofs+115);
+blokeplot(blokeadr,(plface==1)?1:0,0,8);
+blokeplot(blokeadr,plframe+6,0,19);
 
 int r0;
 if (plstrength<laststrength)
@@ -2846,7 +2818,7 @@ if (plstrength<laststrength)
 else
 	nofunnyface: if (plface==1) r0=15; else r0=12;
 plotface:
-fspplot(blokeadr,r0,160,plotterofs+94); //head
+blokeplot(blokeadr,r0,0,-2); //head
 
 if (plweapontype==0)  plotarms();
 else if (plweapontype==_mpmgblamno)  plotmpmgblam();
@@ -2859,12 +2831,12 @@ seestars();
 writeclip();
 }
 
-void plotarms() {fspplot(blokeadr,(plframe%3)+2,160+(plframe>2),plotterofs+105);}
+void plotarms() {blokeplot(blokeadr,(plframe%3)+2,(plframe>2),9);}
 
 void plotmpmg()
 {
-fspplot(blokeadr,42+(plface==1),160-6+(plface!=1)*12+(plfired?0:2*plface-1),plotterofs+106);
-fspplot(blokeadr,44+(plface==1),160,plotterofs+104);
+blokeplot(blokeadr,42+(plface==1),-6+(plface!=1)*12+(plfired?0:2*plface-1),10);
+blokeplot(blokeadr,44+(plface==1),0,8);
 plfired=0;
 }
 
@@ -2873,19 +2845,18 @@ void plotmpmgblam()
 int r2;
 if (blamctr&8)  r2=(blamctr&15)-15;
 else r2=blamctr&15;
-fspplot(blockadr,_weaplowlim+6+(plface==1),
-	160-6+(plface!=1)*12+(plfired?plface*2-1:0),plotterofs+107+(r2>>1));
-fspplot(blokeadr,44+(plface==1),160,plotterofs+104+(r2>>1));
+blokeplot(blockadr,_weaplowlim+6+(plface==1),
+	  -6+(plface!=1)*12+(plfired?plface*2-1:0),11+(r2>>1));
+blokeplot(blokeadr,44+(plface==1),0,8+(r2>>1));
 plfired=0;
 }
 
 void plotrocket()
 {
 int r0=rockettabadr[rocketctr];
-fspplot(blokeadr,50+(r0>170)+(r0>60)-(r0<-60)-(r0<-170),
-	160+(plfired?(plface*2-1):0),plotterofs+97);
-
-fspplot(blokeadr,53,160+plface,plotterofs+102);
+blokeplot(blokeadr,50+(r0>170)+(r0>60)-(r0<-60)-(r0<-170),
+	  (plfired?(plface*2-1):0),1);
+blokeplot(blokeadr,53,plface,6);
 plfired=0;
 if (rocketflag==0)  rocketctr=0;
 }
@@ -2895,8 +2866,8 @@ void plotrocketblam()
 int r2;
 if (blamctr&8)  r2=(blamctr&15)-15;
 else r2=blamctr&15;
-fspplot(blockadr,_weaplowlim+15,160+(plfired?0:2*plface-1),plotterofs+(r2>>1)+96);
-fspplot(blokeadr,53,160,plotterofs+(r2>>2)+102);
+blokeplot(blockadr,_weaplowlim+15,(plfired?0:2*plface-1),(r2>>1));
+blokeplot(blokeadr,53,0,(r2>>2)+6);
 plfired=0;
 }
 
@@ -2911,22 +2882,22 @@ if (bonusreplot==0) return;
 bonusreplot-=r2; //from above
 if (bonusreplot<0) bonusreplot=0;
 
-fsplx=_bonusxplace-8+0x100; // align to write clip window to FastSpr
-fsply=_bonusyplace-20;
-fsphx=_bonusxplace+8+0x100;
-fsphy=_bonusyplace+20;
+fsplx=vduvar.bonusx-vduvar.sprw/2; // align to write clip window to FastSpr
+fsply=vduvar.bonusy-vduvar.bonush;
+fsphx=vduvar.bonusx+vduvar.sprw/2;
+fsphy=vduvar.bonusy+vduvar.bonush;
 swi_fastspr_setclipwindow(fsplx,fsply,fsphx,fsphy);
 swi_fastspr_clearwindow();
-int r3=((bonusreplot>7)?bonusreplot-8:0);
+int r3=(((bonusreplot>7)?bonusreplot-8:0)*vduvar.bonush)/20;
 fspplot(blockadr,(bonusctr+16>_bonuslow+12)?0:(bonusctr+16),
-	_bonusxplace+0x100,_bonusyplace+r3);
+	vduvar.bonusx,vduvar.bonusy+r3);
 if (bonusctr!=0)
 	fspplot(blockadr,(bonusctr+15>_bonuslow+12)?0:(bonusctr+15),
-		_bonusxplace+0x100,_bonusyplace-20+r3);
+		vduvar.bonusx,vduvar.bonusy-vduvar.bonush+r3);
 nosecond:
 if (bonusctr!=12)
 	fspplot(blockadr,(bonusctr+17>_bonuslow+12)?0:(bonusctr+17),
-		_bonusxplace+0x100,_bonusyplace+20+r3);
+		vduvar.bonusx,vduvar.bonusy+vduvar.bonush+r3);
 nothird:
 writeclip(); // reset the clip window
 }
@@ -3981,24 +3952,25 @@ bidforsound(_Sparechannel,(r7==_scoresprbase+12)?_Samprave:_Samporgan,
 	    0x7f,0x3800,0xff00,(r7==_scoresprbase+12)?0x60000800:0x60000200,10,-127,
 	    (r7==_scoresprbase+12)?CHUNK_WEAPON_4:CHUNK_WEAPON_2);
 /* XXX Original code also kills message so the same one is never redisplayed */
+int x=vduvar.gamex+vduvar.gamew+32,y=vduvar.gamey+vduvar.gameh-8;
 switch ((plweapontype-1)&15)
 {
-case 0:  message(320,192,-3,0,"Standard Mini-Gun"); break;
-case 1:  message(320,192,-3,0,"Mini-Gun with spray"); break;
-case 2:  message(320,192,-3,0,"Five Stream Gun"); break;
-case 3:  message(320,192,-3,0,"Fast 5 way - zap those nasties!"); break;
-case 4:  message(320,192,-3,0,"A weird one!"); break;
-case 5:  message(320,192,-3,0,"Three Way Blitzer"); break;
-case 6:  message(320,192,-3,0,"Blitzing Five Way - Lets Party"); break;
-case 7:  message(320,192,-3,0,"MegaBlam 5000 Mini-Gun!!!!"); break;
-case 8:  message(320,192,-3,0,"Standard Rocket Launcher"); break;
-case 9:  message(320,192,-3,0,"Twin Rocket Launcher"); break;
-case 10: message(320,192,-3,0,"Quad Launcher - Open Fire!"); break;
-case 11: message(320,192,-3,0,"Launcher with starburst"); break;
-case 12: message(320,192,-3,0,"Twin rockets with starburst - let's see some fireworks!"); break;
-case 13: message(320,192,-3,0,"Quad Launcher with starburst! Arrgghhhh!!!!"); break;
-case 14: message(320,192,-3,0,"A Pot Pourri Rocket Launcher - mix and match!"); break;
-case 15: message(320,192,-3,0,"MegaBlam Rocket Launcher!!!!  Six Shots Only!"); break;
+case 0:  message(x,y,-3,0,"Standard Mini-Gun"); break;
+case 1:  message(x,y,-3,0,"Mini-Gun with spray"); break;
+case 2:  message(x,y,-3,0,"Five Stream Gun"); break;
+case 3:  message(x,y,-3,0,"Fast 5 way - zap those nasties!"); break;
+case 4:  message(x,y,-3,0,"A weird one!"); break;
+case 5:  message(x,y,-3,0,"Three Way Blitzer"); break;
+case 6:  message(x,y,-3,0,"Blitzing Five Way - Lets Party"); break;
+case 7:  message(x,y,-3,0,"MegaBlam 5000 Mini-Gun!!!!"); break;
+case 8:  message(x,y,-3,0,"Standard Rocket Launcher"); break;
+case 9:  message(x,y,-3,0,"Twin Rocket Launcher"); break;
+case 10: message(x,y,-3,0,"Quad Launcher - Open Fire!"); break;
+case 11: message(x,y,-3,0,"Launcher with starburst"); break;
+case 12: message(x,y,-3,0,"Twin rockets with starburst - let's see some fireworks!"); break;
+case 13: message(x,y,-3,0,"Quad Launcher with starburst! Arrgghhhh!!!!"); break;
+case 14: message(x,y,-3,0,"A Pot Pourri Rocket Launcher - mix and match!"); break;
+case 15: message(x,y,-3,0,"MegaBlam Rocket Launcher!!!!  Six Shots Only!"); break;
 }
 
 }
@@ -4373,33 +4345,34 @@ void mazeplot()
 writeclip();
 backdrop();
 
-int r0=(xpos-(144<<8))>>8;
-int r1=(ypos-(96<<8))>>8;
-int r8=15-(r0&15);
-int r9=15-(r1&15);
+int r0=(xpos-((vduvar.xblocks*8)<<8))>>8;
+int r1=(ypos-((vduvar.yblocks*8)<<8))>>8;
+int r8=((15-(r0&15)-16)*vduvar.sprw)/16+vduvar.gamex;
+int r9=((15-(r1&15)-8)*vduvar.sprh)/16+vduvar.gamey;
 
 
 int r5=0, r7=(r1>>4);
 if (r7<0) {r5=-r7; r7=0;}
 
 // Draw midground elements
-for (;/*ins2:*/ (r5<14)&&(r7<boardadr->height);r5++,r7++) {
-int r4=0,r6=((xpos>>8)-144)>>4;
+for (;/*ins2:*/ (r5<vduvar.yblocks+2)&&(r7<boardadr->height);r5++,r7++) {
+int r4=0,r6=((xpos>>8)-(vduvar.xblocks*8))>>4;
 if (r6<0) {r4=-r6; r6=0;}
-for (;/*ins1:*/ (r4<21)&(r6<boardadr->width);/*skip1:*/ r4++,r6++) {
+for (;/*ins1:*/ (r4<vduvar.xblocks+3)&(r6<boardadr->width);/*skip1:*/ r4++,r6++) {
 r0=*(boardadr->contents+boardwidth*r7+r6);
-if ((r0>=8)&&(r0<12)) fspplot(blockadr,r0,(r4<<4)-r4+10+r8,(r5<<4)-r5+7+r9);}}
+if ((r0>=8)&&(r0<12)) fspplot(blockadr,r0,(r4*vduvar.sprw*15)/16+vduvar.xblocks/2+1+r8,
+			                  (r5*vduvar.sprh*15)/16+vduvar.yblocks/2+1+r9);}}
 // Now foreground ones
 r5=0, r7=(r1>>4);
 if (r7<0) {r5=-r7; r7=0;}
 
- for (;/*ins2:*/ (r5<14)&&(r7<boardadr->height);r5++,r7++)
+ for (;/*ins2:*/ (r5<vduvar.yblocks+2)&&(r7<boardadr->height);r5++,r7++)
 {
 l2:;
-int r4=0,r6=((xpos>>8)-144)>>4;
+int r4=0,r6=((xpos>>8)-(vduvar.xblocks*8))>>4;
 if (r6<0) {r4=-r6; r6=0;}
 
-for (;/*ins1:*/ (r4<21)&(r6<boardadr->width);/*skip1:*/ r4++,r6++)
+for (;/*ins1:*/ (r4<vduvar.xblocks+3)&(r6<boardadr->width);/*skip1:*/ r4++,r6++)
 {
 l1:
 r0=*(boardadr->contents+boardwidth*r7+r6);
@@ -4417,7 +4390,7 @@ else r0^=r1>>1;
 noanimate:
 if ((r0>=_weaplowlim+1)&&(r0<=_weaplowlim+6))
      r0=_weaplowlim+1;
-fspplot(blockadr,r0,(r4<<4)+r8,(r5<<4)+r9);
+fspplot(blockadr,r0,r4*vduvar.sprw+r8,r5*vduvar.sprh+r9);
 }
 }
 skip2:;
@@ -4435,11 +4408,11 @@ int r2=(44+48-(r3%48))%48;
 int r4=0x1f&((ypos>>8)-(ypos>>10)); // parallax
 
 modpos:
- back_to_blit.x = 48-r2; back_to_blit.y = r4;
- back_to_blit.w = 48; back_to_blit.h = 32;
+ back_to_blit.x = ((48-r2)*vduvar.backw)/48; back_to_blit.y = (r4*vduvar.backh)/32;
+ back_to_blit.w = vduvar.backw; back_to_blit.h = vduvar.backh;
 
- for (loc_to_blit.y = 8; loc_to_blit.y < 6*32; loc_to_blit.y+=32)
-   for (loc_to_blit.x = 16; loc_to_blit.x < 6*48; loc_to_blit.x+=48)
+ for (loc_to_blit.y = vduvar.gamey; loc_to_blit.y < vduvar.gamey+vduvar.gameh; loc_to_blit.y+=vduvar.backh)
+   for (loc_to_blit.x = vduvar.gamex; loc_to_blit.x < vduvar.gamex+vduvar.gamew; loc_to_blit.x+=vduvar.backw)
      SDL_BlitSurface(backsprite, &back_to_blit, ArcScreen, &loc_to_blit);
 }
 
@@ -4497,16 +4470,11 @@ options(1); // mark as in game
 rejoin();
 }
 
-void copyscreen()
-{
-swi_blitz_screenflush();
-}
-
 void setfullclip()
 {
-clip.x=_lowx; clip.y=_lowy;
-clip.w=_highx-_lowx;
-clip.h=_highy-_lowy;
+clip.x=vduvar.gamex; clip.y=vduvar.gamey;
+clip.w=vduvar.gamew;
+clip.h=vduvar.gameh;
 writeclip();
 }
 
@@ -4562,8 +4530,11 @@ initplx=x; initply=y-(1<<8);
 
 void showgamescreen()
 {
-decomp(gamescreenadr);
-copyscreen();
+  releaseclip();
+  //SDL_SoftStretch(GameScreen,NULL,ArcScreen,NULL);
+  SDL_BlitSurface(GameScreen, NULL, ArcScreen, NULL);
+  writeclip();
+SDL_Flip(ArcScreen);
 scorewiperead();
 showlives();
 }
@@ -4571,21 +4542,26 @@ showlives();
 void showlives()
 {
 releaseclip();
-fspplot(charsadr,lives&7,44,234);
+fspplot(charsadr,lives&7,vduvar.livesx,vduvar.livesy);
 switchbank();
-fspplot(charsadr,lives&7,44,234);
 writeclip();
 }
 
 void showchatscreen()
 {
-decomp(chatscreenadr);
-copyscreen();
+  releaseclip();
+  //SDL_SoftStretch(ArcScreen,NULL,DecompScreen,NULL);
+  SDL_BlitSurface(ChatScreen, NULL, ArcScreen, NULL);
+  writeclip();
+SDL_Flip(ArcScreen);
 }
 
 void showchatscores()
 {
-decomp(chatscreenadr);
+  releaseclip();
+  //SDL_SoftStretch(ArcScreen,NULL,DecompScreen,NULL);
+  SDL_BlitSurface(ChatScreen, NULL, ArcScreen, NULL);
+  writeclip();
 }
 
 int palette[256];
@@ -4601,8 +4577,10 @@ void init_palette()
       + (i&0x03)*0x111111;
 }
 
-void decomp(char* r11) 
+SDL_Surface* decomp(char* r11) 
 {
+ SDL_Surface* DecompScreen = SDL_CreateRGBSurface(SDL_HWSURFACE, 320, 256, 32,
+						  0xff,0xff00,0xff0000,0);
  static SDL_Rect from;
  static SDL_Rect to;
  from.x = from.y = to.x = to.y = 0;
@@ -4628,10 +4606,7 @@ void decomp(char* r11)
 decompdone:;
     }
   SDL_UnlockSurface(DecompScreen);
-  releaseclip();
-  //SDL_SoftStretch(ArcScreen,NULL,DecompScreen,NULL);
-  SDL_BlitSurface(DecompScreen, NULL, ArcScreen, NULL);
-  writeclip();
+  return DecompScreen;
 }
 
 void clearkeybuf()
@@ -5294,6 +5269,7 @@ loadvitalfile(chatscreenpath,resourcepath,&charsadr_load);
 gamescreenadr=charsadr_load;
 loadvitalfile(charpath,resourcepath,&gamescreenadr);
 initialize_sprites(charsadr_load,charsadr,48,gamescreenadr);
+ ChatScreen = decomp(chatscreenadr);
 charsok=1;
 }
 
@@ -5315,6 +5291,7 @@ do
 reload=loadhammered(gamescreenpath,resourcepath,&r10);
 if (reload==-1) {badload(); return;}
 } while (reload==1);
+ GameScreen = decomp(gamescreenadr);
 o10=r10; //blokeadr=r10;
 load2:
 do
@@ -6176,36 +6153,45 @@ void load_voices()
  load_voice(26,"./Voices/Cymbal");
 }
 
-void vduread()
-{
-osbyte_f1(1); //get non-shadow screen bank
-
-
-ArcScreen = SDL_SetVideoMode( 320, 256, 32 /*bpp*/, SDL_HWSURFACE | (fullscreen?SDL_FULLSCREEN:0));
-DecompScreen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 256, 32,
-						  0xff,0xff00,0xff0000,0);
- wipescr = SDL_CreateRGBSurface(SDL_HWSURFACE, 128, 16, 32, 0xff,0xff00,0xff0000,0);
-// backsprite contains four copies of the backdrop tile
- backsprite = SDL_CreateRGBSurface(SDL_HWSURFACE, 2*48, 2*32, 32, 0xff,0xff00,0xff0000,0);
- hbytes = ArcScreen->pitch;
-  /* initialise screenstart(149), modesize(7), hbytes(6) */
- SDL_ShowCursor(SDL_DISABLE);
-}
-
-void getstrengthtab() {;}
-
 void init_strengthcol() {
-  redness = SDL_CreateRGBSurface(SDL_HWSURFACE, (_strengthmax>>8), 32+6, 32, 0xff,0xff00,0xff0000,0);
-  greyness = SDL_CreateRGBSurface(SDL_HWSURFACE, (_strengthmax>>8), 32+6, 32, 0xff,0xff00,0xff0000,0);
+  int w = vduvar.strengthw, h = 32+vduvar.strengthh;
+  redness = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0xff,0xff00,0xff0000,0);
+  greyness = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0xff,0xff00,0xff0000,0);
  SDL_LockSurface(redness);
  SDL_LockSurface(greyness);
- for (int i=0;i<(_strengthmax>>8)*(32+6);i++) {
-   ((Uint32*)redness->pixels)[i] = 0xff000000+0x11*(11+(random()%5)); // varying shade of red
-   ((Uint32*)greyness->pixels)[i] = 0xff000000+0x111111*(3&random()); // varying shade of dark grey
+ for (int j=0;j<h;j++)
+ for (int i=0;i<w;i++) {
+   ((Uint32*)redness->pixels)[j*(redness->pitch/4)+i] = 0xff000000+0x11*(11+(random()%5)); // varying shade of red
+   ((Uint32*)greyness->pixels)[j*(greyness->pitch/4)+i] = 0xff000000+0x111111*(3&random()); // varying shade of dark grey
   }
  SDL_UnlockSurface(greyness);
  SDL_UnlockSurface(redness);
 }
+
+void vduread()
+{
+  vduvar.width = 320; vduvar.height = 256;
+  vduvar.gamex = 16; vduvar.gamey = 8;
+  vduvar.gamew = 16*18; vduvar.gameh = 16*12;
+  vduvar.backw = 48; vduvar.backh = 32;
+  vduvar.scorex = (160-(16*7)/2); vduvar.scorey = 220;
+  vduvar.xblocks = 18; vduvar.yblocks = 12;
+  vduvar.livesx = 44; vduvar.livesy = 234;
+  vduvar.strengthx = 108; vduvar.strengthy = 239;
+  vduvar.strengthw = (_strengthmax>>8); vduvar.strengthh = 6;
+  vduvar.bonusx = 290; vduvar.bonusy = 232; vduvar.bonush = 20;
+  vduvar.sprw = 16; vduvar.sprh = 16;
+ ArcScreen = SDL_SetVideoMode( vduvar.width, vduvar.height, 32 /*bpp*/,
+			       SDL_HWSURFACE | SDL_DOUBLEBUF | (fullscreen?SDL_FULLSCREEN:0));
+ wipescr = SDL_CreateRGBSurface(SDL_HWSURFACE, 128, 16, 32, 0xff,0xff00,0xff0000,0);
+// backsprite contains four copies of the backdrop tile
+ backsprite = SDL_CreateRGBSurface(SDL_HWSURFACE, 2*48, 2*32, 32, 0xff,0xff00,0xff0000,0);
+  /* initialise screenstart(149), modesize(7), hbytes(6) */
+ init_strengthcol();
+ SDL_ShowCursor(SDL_DISABLE);
+}
+
+void getstrengthtab() {;}
 
 int addtab[] = {10000000, 1000000, 100000, 10000, 1000, 100, 10, 1};
 
@@ -6265,7 +6251,7 @@ void init_sounds() {
 }
 
 void c_array_initializers() {
-  init_projsplittab(); init_rocketbursttab(); init_alspintab(); init_strengthcol(); init_rockettab();
+  init_projsplittab(); init_rocketbursttab(); init_alspintab(); init_rockettab();
   init_palette(); init_splittab();
   if (sound_available) {
     load_voices();
@@ -6301,13 +6287,6 @@ int main()
  sound_available=!Mix_OpenAudio(22050,MIX_DEFAULT_FORMAT,2,1024);
  if (!sound_available) fprintf(stderr,"Sound disabled: opening audio device failed: %s\n",Mix_GetError());
  c_array_initializers();
-/*MODE 15
-MODE 13
-VOICES 8
-STEREO 5,-32
-STEREO 6,32
-STEREO 7,-32
-STEREO 8,32*/
 swi_stasis_control(8,8);
 do
 {init();}
@@ -6413,7 +6392,6 @@ int osbyte_81(int c) {
   update_keyboard();
   return keyboard[-c];}
 
-void osbyte_f1(char c) {;}
 char swi_oscrc(int w,char* start,char* end,int bytes) { return 0xff;}
 FILE* swi_osfind(int op, const char* name) {
   switch (op)
@@ -6473,7 +6451,6 @@ int swi_joystick_read(int a,int* x,int* y) {;}
 void swi_blitz_wait(int d) { SDL_Delay(d*10);}
 void swi_blitz_smallretrieve() {;}
 void swi_blitz_screenretrieve() {;}
-void swi_blitz_screenflush() { SDL_Flip(ArcScreen);}
 int swi_blitz_hammerop(int op, char* name, char* path, char* space) {
   char fullname[240]="";
   strcat(fullname,path);
@@ -6630,4 +6607,17 @@ void fspplot(fastspr_sprite* sprites, char n, int x, int y)
   static SDL_Rect pos;
   pos.x = x - sprite.x; pos.y = y - sprite.y;
   SDL_BlitSurface(sprite.s, NULL, ArcScreen, &pos);
+}
+
+void relplot(fastspr_sprite* sprites, char n, int x, int y)
+{
+  fspplot(sprites,n,
+	  (((x>>8)-(xpos>>8)-1)*vduvar.sprw)/16+vduvar.gamex+(vduvar.gamew/2),
+	  (((y>>8)-(ypos>>8))*vduvar.sprh)/16+vduvar.gamey+(vduvar.gameh/2)-(vduvar.sprh/2));
+}
+
+void blokeplot(fastspr_sprite* sprites, char n, int x, int y)
+{
+  fspplot(sprites,n,x+vduvar.gamex+(vduvar.gamew/2),
+	  y+plotterofs+vduvar.gamey+(vduvar.gameh/2)-(vduvar.sprh/2));
 }

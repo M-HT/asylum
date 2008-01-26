@@ -1342,7 +1342,7 @@ if (r3<0)  r3=0;
  static SDL_Rect strengthloc, strengthpart;
  strengthloc.x=vduvar.strengthx;
  strengthloc.y=vduvar.strengthy;
- strengthpart.x=0; strengthpart.y=random()&0x1f;
+ strengthpart.x=0; strengthpart.y=framectr&0x1f;
  strengthpart.w=vduvar.strengthw;
  strengthpart.h=vduvar.strengthh;
 SDL_BlitSurface(greyness, &strengthpart, ArcScreen, &strengthloc);
@@ -4933,6 +4933,7 @@ message(96,220,0,0,"ESC - Exit");
 do
 {
      tunevolumeloop:
+swi_bodgemusic_volume(musicvol);
 if (swi_sound_speaker(0)) *tunevol1=17;
 else *tunevol1=16;
 swi_blitz_wait(0);
@@ -5256,6 +5257,7 @@ int getfiles()
 getvitalfiles();
 showloading();
 getmusicfiles();
+swi_bodgemusic_start(1,0);
 getgamefiles();
 return 0;
 }
@@ -5277,7 +5279,6 @@ void getmusicfiles()
 {
   swi_bodgemusic_load(1,mainmusicpath);
   swi_bodgemusic_load(2,deathmusicpath);
-  swi_bodgemusic_start(1,0);
 }
 
 void getgamefiles()
@@ -5981,12 +5982,13 @@ music_state music;
  char voice[32][30000];
  char tuneload[4][30000];
  Sint16 mulaw[256];
+Mix_Music* oggmusic[4];
 
 
 
 Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, char frames)
 {
-  int numsamples = frames*22050.0/50.0; // frames are 50Hz?
+  int numsamples = frames*22050.0/50.0*2; // frames are 50Hz?
   Mix_Chunk* mc = (Mix_Chunk*)malloc(sizeof(Mix_Chunk));
   Uint16* s = (Uint16*)malloc(numsamples*2*sizeof(Uint16));
   mc->abuf = (Uint8*)s;
@@ -6007,9 +6009,9 @@ Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, ch
     //if ((ps>0)&&(pitch>psmax)) pitch=psmax;
     //if ((ps<0)&&(pitch<psmax)) pitch=psmax;
     int off = time;
-    double old_sample_rate=1000.0*pow(2,pitch/4096.0);
+    double old_sample_rate=500.0*pow(2,pitch/4096.0);
    matching += old_sample_rate/22050;
-   for (int j = (int)matching-16; j <= (int)matching+16; j++)
+   for (int j = (int)matching-32; j <= (int)matching+32; j++)
    {
      if ((j<0)) continue;
      int jj=j;
@@ -6026,7 +6028,7 @@ Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, ch
      if (vscale>0xff) vscale=0xff;
      if (vscale>0) w *= (vscale/0x7f); else w = 0;
      double x = PI*(j - matching);
-     if (x==0) mono += w;
+     if (x==0) mono += w/1.3;
      else mono += w * sinf(x) / (1.3*x);
    }
    s[1]=*s=mono; // XXX stereo
@@ -6048,16 +6050,27 @@ void soundclaim(int c, char samp, char initvol, int initpitch, int volslide, int
   //if (old_chunk) Mix_FreeChunk(old_chunk); XXX memory leak
 }
 
+FILE* musicdumpfile;
+
 void sdl_music_hook(void* udata, Uint8* stream, int len)
 {
   music_state* m = (music_state*)udata;
   char* tuneload = m->tune;
-  Uint16* s = (Uint16*)stream;
-  for (int i=0; i<len; i+=4, m->time++, s+=2)
+  Sint16* s = (Sint16*)stream;
+  int window = (len<0)?16:4;
+  unsigned long ln = (len<0)?-ftell(musicdumpfile):0;
+  for (int i=0; (len<0)||(i<len); i+=4, m->time++, (len<0)||(s+=2))
   {
     if (0==(m->time%m->tempo))
     {
       // new beat
+      if (len==-2)
+	{
+	  ln+=ftell(musicdumpfile); fseek(musicdumpfile,8,0);
+	  fputc(ln>>24,musicdumpfile); fputc((ln&0xff0000)>>16,musicdumpfile);
+	  fputc((ln&0xff00)>>8,musicdumpfile); fputc(ln&0xff,musicdumpfile);
+	  break;
+	}
       int inst = 0;
       int pitch = 8;
       char first;
@@ -6081,7 +6094,7 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
       if (second&0x80)
       {
 	m->section++;
-	if (0x80&*m->section) m->section=tuneload+8;
+	if (0x80&*m->section) {m->section=tuneload+8; if (len<0) len=-2;}
 	m->pointer=read_littleendian(((uint32_t*)tuneload)+0x42+*m->section);
       }
     }
@@ -6093,7 +6106,7 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
     int off = m->time - m->start_time[v];
     double old_sample_rate=4000.0*pow(2,pitch/12.0);
    double matching = off*old_sample_rate/22050;
-   for (int j = (int)matching-4; j <= (int)matching+4; j++)
+   for (int j = (int)matching-window; j <= (int)matching+window; j++)
    {
      if ((j<0)) continue;
      int jj=j;
@@ -6111,9 +6124,16 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
 	    + (len-jj)*(double)mulaw[voice[m->inst[v]][jj+44]])/gap/4;
      else w = mulaw[voice[m->inst[v]][jj+44]]/4;
      double x = PI*(j - matching);
-     if (x==0) s[v&1] += w;
-     else s[v&1] += w * (sinf(x) * musicvol) / (1.3 * x * 0x7f);
+     if (x==0) s[v&1] += w/1.3;
+     else s[v&1] += w * sinf(x) / (1.3 * x);
    }
+    }
+    if (len<0) {
+      /* .au is big-endian format */
+      fputc(s[0]>>8,musicdumpfile); 
+      fputc(s[0]&0xff,musicdumpfile); 
+      fputc(s[1]>>8,musicdumpfile);
+      fputc(s[1]&0xff,musicdumpfile); 
     }
  }    
 }
@@ -6159,10 +6179,15 @@ void init_strengthcol() {
   greyness = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0xff,0xff00,0xff0000,0);
  SDL_LockSurface(redness);
  SDL_LockSurface(greyness);
- for (int j=0;j<h;j++)
+ for (int j=0;j<32;j++)
  for (int i=0;i<w;i++) {
    ((Uint32*)redness->pixels)[j*(redness->pitch/4)+i] = 0xff000000+0x11*(11+(random()%5)); // varying shade of red
    ((Uint32*)greyness->pixels)[j*(greyness->pitch/4)+i] = 0xff000000+0x111111*(3&random()); // varying shade of dark grey
+  }
+ for (int j=32;j<32+vduvar.strengthh;j++)
+ for (int i=0;i<w;i++) {
+   ((Uint32*)redness->pixels)[j*(redness->pitch/4)+i] = ((Uint32*)redness->pixels)[(j-32)*(redness->pitch/4)+i];
+   ((Uint32*)greyness->pixels)[j*(greyness->pitch/4)+i] = ((Uint32*)greyness->pixels)[(j-32)*(greyness->pitch/4)+i];
   }
  SDL_UnlockSurface(greyness);
  SDL_UnlockSurface(redness);
@@ -6261,7 +6286,7 @@ void c_array_initializers() {
   for (int i=0;i<512;i++) keyboard[i]=0;
 }
 
-int main()
+int main(int argc, char** argv)
 {
  char r1[240] = SCOREPATH;
  strcat(r1,testsave);
@@ -6283,6 +6308,39 @@ int main()
     exit(1);
   }
  }
+
+ if ((argc>2)&&!strcmp(argv[1],"--dumpmusic"))
+    {
+      setegid(getgid());
+      seteuid(getuid());
+      char* musicinputpath=argv[2];
+ Sint16 exp[8] = {0,132,396,924,1980,4092,8316,16764};
+ for (int i=0;i<256;i++)
+   mulaw[i] = ((i&1)?-1:1) * (exp[i>>5] + ((i&0x1e)<<(2+(i>>5))));
+      Uint8 wav[4];
+      char musicdumppath[1024]="";
+      strncat(musicdumppath,musicinputpath,1000);
+      strncat(musicdumppath,".au",20);
+      musicdumpfile = fopen(musicdumppath,"w");
+      fprintf(stderr,"Dumping music ");
+      load_voices();
+      //swi_bodgemusic_load(1,musicinputpath);
+      SDL_RWops* tune = SDL_RWFromFile(musicinputpath, "r");
+      SDL_RWread(tune,tuneload+1,1,30000);
+      initialize_music(1);
+      if (argc>3) if (!strcmp(argv[3],"--slower")) swi_sound_qtempo(0x980);
+      fputs(".snd",musicdumpfile);
+      fputc(0,musicdumpfile); fputc(0,musicdumpfile); fputc(0,musicdumpfile); fputc(32,musicdumpfile); // data start
+      fputc(255,musicdumpfile); fputc(255,musicdumpfile); fputc(255,musicdumpfile); fputc(255,musicdumpfile); // length
+      fputc(0,musicdumpfile); fputc(0,musicdumpfile); fputc(0,musicdumpfile); fputc(3,musicdumpfile); // 16-bit linear
+      fputc(0,musicdumpfile); fputc(0,musicdumpfile); fputc(22050>>8,musicdumpfile); fputc(22050&0xff,musicdumpfile);
+      fputc(0,musicdumpfile); fputc(0,musicdumpfile); fputc(0,musicdumpfile); fputc(2,musicdumpfile); // stereo
+      fputs("blotwell",musicdumpfile);
+      sdl_music_hook(&music,wav+2,-1 /* dump entire track into buffer */);
+      fclose(musicdumpfile);
+      exit(0);
+    }
+
  SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
  sound_available=!Mix_OpenAudio(22050,MIX_DEFAULT_FORMAT,2,1024);
  if (!sound_available) fprintf(stderr,"Sound disabled: opening audio device failed: %s\n",Mix_GetError());
@@ -6345,20 +6403,33 @@ strncpy(r11->text,b,60);
 }
 
 
-void swi_bodgemusic_start(int a,int b) {
- if (!sound_available) return;
- swi_bodgemusic_stop();
+void initialize_music(int a) {
  swi_sound_qtempo(0x1000);
  music.time=0;
  music.tune=tuneload[a];
  music.section=tuneload[a]+8;
  music.pointer=read_littleendian(((uint32_t*)(tuneload[a]))+0x42+*music.section);
  for (int v=0;v<4;v++) {music.pitch[v]=0; music.inst[v]=0; music.start_time[v]=0;}
+}
+void swi_bodgemusic_start(int a,int b) {
+ if (!sound_available) return;
+ swi_bodgemusic_stop();
+ if (oggmusic[a]) Mix_PlayMusic(oggmusic[a],-1);
+ else
+   {
+ initialize_music(a);
  Mix_HookMusic(sdl_music_hook, &music);
+   }
 }
 void swi_bodgemusic_stop() { if (sound_available) {Mix_HaltMusic(); Mix_HookMusic(NULL,NULL);} }
-void swi_bodgemusic_volume(int v) {;}
+void swi_bodgemusic_volume(int v) { Mix_VolumeMusic(v);}
 void swi_bodgemusic_load(int a,char* b) {
+  char name[1024]="";
+  strncpy(name,b,1000);
+  strncat(name,".ogg",20);
+  if (oggmusic[a]) Mix_FreeMusic(oggmusic[a]);
+  oggmusic[a] = Mix_LoadMUS(name);
+  if (oggmusic[a]) return;
  SDL_RWops* tune = SDL_RWFromFile(b, "r");
  //SDL_RWseek(tune, 8+256+64, SEEK_SET);
  SDL_RWread(tune,tuneload+a,1,30000);

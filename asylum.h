@@ -291,7 +291,7 @@ void prepstrength();
 void screensave();
 void getvars();
 void vduread();
-int main();
+int main(int argc,char** argv);
 void message(int x,int y,float xv,float yv,char* a);
 
 void startmessage();
@@ -316,6 +316,7 @@ void losehandlers();
 void getstrengthtab();
 void addtabinit();
 void initrockettab();
+void initialize_music(int a);
 void swi_bodgemusic_start(int a,int b);
 void swi_bodgemusic_stop();
 void swi_bodgemusic_volume(int v);

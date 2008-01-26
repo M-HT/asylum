@@ -50,6 +50,16 @@ install: install-resources install-hiscores install-binary
 uninstall:
 	rm -rf $(INSTALLBINARY) $(INSTALLRESOURCEPATH) $(INSTALLHISCORES)
 
+oggs:
+	bash -c 'pushd data; for i in */Music?; do pushd ..; ./asylum --dumpmusic $$i `if (echo \$$i|grep Resources.Music2>/dev/null); then echo -n --slower; fi`; \
+	popd;\
+	tail -c +33 $$i.au| \
+	oggenc - --raw --raw-endianness=1 --raw-rate=22050 --artist="Andy Southgate" \
+	--album="Background music for Asylum computer game" \
+	>$$i.ogg;\
+	rm $$i.au;\
+	done; popd'
+
 build: asylum
 
 asylum: asylum.c asylum.h Makefile

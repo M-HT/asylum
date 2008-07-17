@@ -4999,7 +4999,7 @@ if (r0==-1) return;
   } while (1); 
 }
 
-int selectkey(int x,int y,int xv,int yv,char* a)
+int selectkey(int x,int y,int xv,int yv,const char* a)
 {
 int r1;
 wipetexttab();
@@ -6138,7 +6138,7 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
  }    
 }
 
-void load_voice(int v, char* filename)
+void load_voice(int v, const char* filename)
 {
  SDL_RWops* file = SDL_RWFromFile(filename, "r");
  if (file==NULL) {sound_available=0; return;}
@@ -6354,7 +6354,7 @@ exit(0);
 }
 
 
-void message(int x,int y,float xv,float yv,char* a)
+void message(int x,int y,float xv,float yv,const char* a)
 {
 int time=400;
 char b[60];
@@ -6362,7 +6362,7 @@ char* q=b;
 if (x>1000) {x-=1000; time=50;}
 if (x>1000) {x-=1000; time=0x10000;}
 //int32_t z[5]={time,x<<8,y<<8,(int)(xv*256),(int)(yv*256)}; // might be non-integers
-for (char* p=a;*p!=0;p++,q++)
+for (const char* p=a;*p!=0;p++,q++)
 {
 switch (*p)
 {

@@ -232,7 +232,7 @@ void soundfillin();
 void tunevolume();
 void maketestsound(int r1);
 void tunespeed();
-int selectkey(int x,int y,int xv,int yv,char* a);
+int selectkey(int x,int y,int xv,int yv,const char* a);
 int readopt(int maxopt);
 int prelude();
 void checkifarm3();
@@ -292,7 +292,7 @@ void screensave();
 void getvars();
 void vduread();
 int main(int argc,char** argv);
-void message(int x,int y,float xv,float yv,char* a);
+void message(int x,int y,float xv,float yv,const char* a);
 
 void startmessage();
 void causeexplo(alent* r11);
@@ -352,4 +352,3 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
 void update_keyboard();
 void soundclaim(int r0,char r1,char r2,int r3,int r4,int r5,char r6,int r7,
 	Mix_Chunk* static_chunk);
-typedef struct fastspr_sprite;

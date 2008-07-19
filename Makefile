@@ -1,8 +1,9 @@
-CC=gcc
-CFLAGS= -x c++ -O3 -funsigned-char \
+CC=g++
+CFLAGS= -O3 -funsigned-char \
 	-DRESOURCEPATH=\"$(INSTALLRESOURCEPATH)\" \
 	-DSCOREPATH=\"$(INSTALLHISCORES)\"
-LIBS=-lm -lSDL -lSDL_mixer -lstdc++
+LIBS= -lm -lSDL -lSDL_mixer
+SRCS= alien.c asylum.c bullet.c file.c keyboard.c maze.c menus.c player.c projectile.c sound.c vdu.c
 
 RESOURCES=data/Resources data/Ego data/Psyche data/Id data/Voices
 
@@ -62,8 +63,8 @@ oggs:
 
 build: asylum
 
-asylum: asylum.c asylum.h Makefile
-	$(CC) $(CFLAGS) -o asylum asylum.c $(LIBS)
+asylum: $(SRCS) asylum.h Makefile
+	$(CC) $(CFLAGS) -o asylum $(SRCS) $(LIBS)
 
 clean:
 	rm asylum

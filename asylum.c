@@ -22,6 +22,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
 
+#include "asylum_os.h"
 #include "asylum.h"
 
 #ifndef RESOURCEPATH
@@ -60,7 +61,6 @@ int currentzone;
 int xpos, ypos;
 char plscore[8];
 int plzone;
-
 
 void init()
 {
@@ -181,7 +181,6 @@ int game()
                 project();
                 bullets();
                 alfire();
-		set_player_clip();
                 playerplot(false);
                 bonusplot();
                 scoreadd();
@@ -500,12 +499,16 @@ int main(int argc, char** argv)
     }
 
     SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
+    SDL_WM_SetCaption("Asylum", "Asylum");
+#ifndef _NO_SOUND
     init_audio();
+#endif
     c_array_initializers();
     swi_stasis_control(8, 8);
     init(); // while (snuffctr>=300);
     SDL_Quit();
     exit(0);
+    return 0;
 }
 
 
@@ -751,3 +754,4 @@ void permitid()
     }
     options.idpermit = 1;
 }
+

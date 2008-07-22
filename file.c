@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #include "asylum.h"
 
@@ -30,28 +31,64 @@ char storage[STOREAREALEN];
 
 //const char idpermitpath[]="<PsychoResource$Path>Idpermit";
 
+static char resource_path[240];
+static char score_path[240];
+
 char configname[] = "/.asylum"; //"<PsychoResource$Path>Config";
 
 FILE* find_config(int op)
 {
     char fullname[240] = "";
 
-    strcat(fullname, getenv("HOME"));
+    char* home = getenv("HOME");
+    if (home)
+	strcat(fullname, home);
+    else
+	strcat(fullname, resource_path);
     strcat(fullname, configname);
     switch (op)
     {
-    case 0x40: return fopen(fullname, "r");
-    case 0x80: return fopen(fullname, "w");
-    case 0xc0: return fopen(fullname, "a");
+    case 0x40: return fopen(fullname, "rb");
+    case 0x80: return fopen(fullname, "wb");
+    case 0xc0: return fopen(fullname, "ab");
     default: return NULL;
     }
 }
 
 void dropprivs()
 {
+#ifndef _WIN32
     setegid(getgid());
     seteuid(getuid());
+#endif
 }
+
+void set_resource_path()
+{
+	resource_path[0] = '\0';
+	if(chdir(RESOURCEPATH) == 0) {
+		strcpy(resource_path, RESOURCEPATH);
+#ifdef HAVE_GET_EXE_PATH
+	} else {
+		get_exe_path(resource_path, sizeof(resource_path));
+		strcat(resource_path, "/data");
+#endif
+	}
+}
+
+void set_score_path()
+{
+	score_path[0] = '\0';
+	if(chdir(SCOREPATH) == 0) {
+		strcpy(score_path, SCOREPATH);
+#ifdef HAVE_GET_EXE_PATH
+	} else {
+		get_exe_path(score_path, sizeof(score_path));
+		strcat(score_path, "/hiscores");
+#endif
+	}
+}
+
 
 
 uint32_t read_littleendian(uint32_t* word)
@@ -156,15 +193,20 @@ char testsave[] = "/TestPermissions";
 
 void find_resources()
 {
-    char r1[240] = SCOREPATH;
-
+    char r1[240];
+    DIR* cwd = opendir(".");
+    set_resource_path();
+    set_score_path();
+    fchdir(dirfd(cwd));
+    closedir(cwd);
+    strcpy(r1, score_path);
     strcat(r1, testsave);
     FILE* permission_test = fopen(r1, "w");
     installed = (NULL != permission_test);
     if (installed)
     {
         fclose(permission_test); unlink(r1);
-        if (chdir(RESOURCEPATH))
+        if (chdir(resource_path))
         {
             fprintf(stderr, "Couldn't find resources directory %s\n", RESOURCEPATH);
             exit(1);
@@ -184,7 +226,8 @@ void find_resources()
 void savescores(char* highscorearea, int mentalzone)
 {
     highscorearea[13*5] = swi_oscrc(0, highscorearea, highscorearea+13*5, 1);
-    char r1[240] = SCOREPATH;
+    char r1[240];
+    strcpy(r1, score_path);
     if (!installed) strcpy(r1, "../hiscores");
     switch (mentalzone)
     {
@@ -194,13 +237,13 @@ void savescores(char* highscorearea, int mentalzone)
     default: strcat(r1, egosave);
     }
     swi_osfile(10, r1, highscorearea, highscorearea+13*5+1);
-    if (installed) chmod(r1, 0060);
+    if (installed) chmod(r1, 0660);
 }
 
 void loadscores(char* highscorearea, int mentalzone)
 {
-    char r1[240] = SCOREPATH;
-
+    char r1[240];
+    strcpy(r1, score_path);
     if (!installed) strcpy(r1, "../hiscores");
     switch (mentalzone)
     {
@@ -250,17 +293,17 @@ int swi_osfile(int op, const char* name, char* start, char* end)
     switch (op)
     {
     case 10: // save file
-        f = fopen(name, "w");
+        f = fopen(name, "wb");
         for (char* i = start; i < end; i++) fputc(*i, f);
         fclose(f);
         return 0;
     case 5: // test file existence
-        f = fopen(name, "r");
+        f = fopen(name, "rb");
         if (f == NULL) return 0;
         fclose(f);
         return 1;
     case 15: // file length
-        f = fopen(name, "r");
+        f = fopen(name, "rb");
         if (f == NULL) return -1;
         fseek(f, 0, SEEK_END);
         x = ftell(f);
@@ -268,7 +311,7 @@ int swi_osfile(int op, const char* name, char* start, char* end)
         return x;
     case 0xff:
     case 14: // load file
-        f = fopen(name, "r");
+        f = fopen(name, "rb");
         if (f == NULL) return -1;
         for (char* i = start; !feof(f); i++) *i = fgetc(f);
         fclose(f);
@@ -282,7 +325,7 @@ int swi_blitz_hammerop(int op, char* name, char* path, char* space)
 
     strcat(fullname, path);
     strcat(fullname, name);
-    FILE* f = fopen(fullname, "r");
+    FILE* f = fopen(fullname, "rb");
     if (f == NULL) return -1; // file does not exist
     if ((getc(f) != 'H') || (getc(f) != 'm') || (getc(f) != 'r'))
     {

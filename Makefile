@@ -1,4 +1,9 @@
+HOST=generic
+#HOST=mingw
+#HOST=haiku
+
 CC=g++
+RM=rm
 CFLAGS= -O3 -funsigned-char \
 	-DRESOURCEPATH=\"$(INSTALLRESOURCEPATH)\" \
 	-DSCOREPATH=\"$(INSTALLHISCORES)\"
@@ -6,10 +11,6 @@ LIBS= -lm -lSDL -lSDL_mixer
 SRCS= alien.c asylum.c bullet.c file.c keyboard.c maze.c menus.c player.c projectile.c sound.c vdu.c
 
 RESOURCES=data/Resources data/Ego data/Psyche data/Id data/Voices
-
-INSTALLBIN=/usr/games/asylum
-INSTALLRESOURCEPATH=/usr/share/games/asylum
-INSTALLHISCORES=/var/games/asylum
 
 INSTALLGROUP=games
 CHGRP=chgrp
@@ -24,11 +25,35 @@ CHMOD=chmod
 #INSTALLGROUP=foo
 #CHGRP=echo
 #CHMOD=echo
+ifeq ($(HOST),haiku)
+	CC=i586-pc-haiku-gcc
+	CFLAGS+=$(CPPFLAGS) -D_NO_SOUND
+	INSTALLBIN=/boot/common/games/asylum/asylum
+	INSTALLRESOURCEPATH=/boot/common/games/asylum/data
+	INSTALLHISCORES=/boot/common/games/asylum/hiscores
+	OS_SOURCE=asylum_haiku.c
+	LIBS=-lSDL_mixer -lSDL -lbe -lroot -ldevice -lgame -lGL -ltextencoding -lmedia
+endif
+ifeq ($(HOST),mingw)
+	INSTALLBIN="c:/program files/asylum/asylum.exe"
+	INSTALLRESOURCEPATH="c:/program files/asylum/data"
+	INSTALLHISCORES="c:/program files/asylum/hiscores"
+	OS_SOURCE=asylum_win.c
+	RM=del
+	EXE=.exe
+	LIBS=-lm -lmingw32 -lSDL_mixer -lSDLmain -lSDL -mwindows
+endif
+ifeq ($(HOST),generic)
+	INSTALLBIN=/usr/games/asylum
+	INSTALLRESOURCEPATH=/usr/share/games/asylum
+	INSTALLHISCORES=/var/games/asylum
+endif
 
 default: build
 
-$(INSTALLBIN): asylum Makefile
-	cp asylum $(INSTALLBIN)
+ifneq ($(HOST),mingw)
+$(INSTALLBIN): asylum$(EXE) Makefile
+	cp asylum$(EXE) $(INSTALLBIN)
 	$(CHGRP) $(INSTALLGROUP) $(INSTALLBIN)
 	$(CHMOD) g+s $(INSTALLBIN)
 	$(CHMOD) a+x $(INSTALLBIN)
@@ -50,6 +75,7 @@ install: install-resources install-hiscores install-binary
 
 uninstall:
 	rm -rf $(INSTALLBINARY) $(INSTALLRESOURCEPATH) $(INSTALLHISCORES)
+endif
 
 oggs:
 	bash -c 'pushd data; for i in */Music?; do pushd ..; ./asylum --dumpmusic $$i `if (echo \$$i|grep Resources.Music2>/dev/null); then echo -n --slower; fi`; \
@@ -61,10 +87,11 @@ oggs:
 	rm $$i.au;\
 	done; popd'
 
-build: asylum
+build: asylum$(EXE)
 
-asylum: $(SRCS) asylum.h Makefile
-	$(CC) $(CFLAGS) -o asylum $(SRCS) $(LIBS)
+asylum$(EXE): $(SRCS) $(OS_SOURCE) asylum.h Makefile
+	$(CC) $(CFLAGS) $(LDFLAGS) -o asylum$(EXE) $(SRCS) $(OS_SOURCE) $(LIBS)
 
 clean:
-	rm asylum
+	$(RM) asylum$(EXE)
+

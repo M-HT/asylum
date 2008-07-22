@@ -144,6 +144,7 @@ void electrocute(char* r5)
 void playerplot(int whendead)
 {
     if ((!whendead) ^ (!snuffctr)) return;
+    set_player_clip();
     if (snuffctr)
     {
        snuffhandler:

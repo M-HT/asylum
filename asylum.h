@@ -18,6 +18,8 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
 
+#define random rand
+
 #define PROJ_TTL (1<<16)
 #define PROJ_ROCKET (1<<15)
 #define PROJ_FIVEWAY (1<<14)

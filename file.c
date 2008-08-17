@@ -193,12 +193,11 @@ char testsave[] = "/TestPermissions";
 
 void find_resources()
 {
-    char r1[240];
-    DIR* cwd = opendir(".");
+    char r1[240], cwd[240];
+    getcwd(cwd, 240);
     set_resource_path();
     set_score_path();
-    fchdir(dirfd(cwd));
-    closedir(cwd);
+    chdir(cwd);
     strcpy(r1, score_path);
     strcat(r1, testsave);
     FILE* permission_test = fopen(r1, "w");

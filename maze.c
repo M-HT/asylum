@@ -51,9 +51,9 @@ extern char atombombctr;
 inline int block_anim(char b) {return ((b >= _animlowlim) && (b <= _animhighlim));}
 inline int block_solid(char b) {return ((b >= _solidlowlim) && (b <= _solidhighlim));}
 inline int block_crumblestand(char b) {return ((b >= _crumblestandlowlim) && (b <= _crumblestandhighlim));}
-inline int block_bomb(char b) {return ((b >= _bomblowlim) && (b < _bombhighlim));}
+inline int block_bomb(char b) {return ((b >= _bomblowlim) && (b <= _bombhighlim));}
 inline int block_target(char b) {return ((b >= _targetlowlim) && (b <= _targethighlim));}
-inline int block_booby(char b) {return ((b >= _boobylowlim) && (b < _boobyhighlim));}
+inline int block_booby(char b) {return ((b >= _boobylowlim) && (b <= _boobyhighlim));}
 int block_gas(char b) {return ((b >= _gaslowlim) && (b < _gashighlim));}
 
 #define targetscore 500

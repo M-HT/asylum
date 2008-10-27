@@ -4,7 +4,8 @@ HOST=generic
 
 CC=g++
 RM=rm
-CFLAGS= -O3 -funsigned-char \
+CFLAGS= -O3
+COPTS=  $(CFLAGS) -funsigned-char \
 	-DRESOURCEPATH=\"$(INSTALLRESOURCEPATH)\" \
 	-DSCOREPATH=\"$(INSTALLHISCORES)\"
 LIBS= -lm -lSDL -lSDL_mixer
@@ -27,7 +28,7 @@ CHMOD=chmod
 #CHMOD=echo
 ifeq ($(HOST),haiku)
 	CC=i586-pc-haiku-gcc
-	CFLAGS+=$(CPPFLAGS) -D_NO_SOUND
+	COPTS+=$(CPPFLAGS) -D_NO_SOUND
 	INSTALLBIN=/boot/common/games/asylum/asylum
 	INSTALLRESOURCEPATH=/boot/common/games/asylum/data
 	INSTALLHISCORES=/boot/common/games/asylum/hiscores
@@ -62,12 +63,16 @@ install-resources: $(RESOURCES) Makefile
 	mkdir -p $(INSTALLRESOURCEPATH)
 	cp -r $(RESOURCES) $(INSTALLRESOURCEPATH)/
 	$(CHGRP) -R $(INSTALLGROUP) $(INSTALLRESOURCEPATH)/
-	$(CHMOD) -R a+rx $(INSTALLRESOURCEPATH)/
+	$(CHMOD) -R a+rX $(INSTALLRESOURCEPATH)/
 
 install-hiscores: Makefile
 	mkdir -p $(INSTALLHISCORES)
-	$(CHGRP) $(INSTALLGROUP) $(INSTALLHISCORES)
-	$(CHMOD) g+rwx,o-rwx $(INSTALLHISCORES)
+	touch $(INSTALLHISCORES)/EgoHighScores
+	touch $(INSTALLHISCORES)/PsycheHighScores
+	touch $(INSTALLHISCORES)/IdHighScores
+	touch $(INSTALLHISCORES)/ExtendedHighScores
+	$(CHGRP) -R $(INSTALLGROUP) $(INSTALLHISCORES)/*
+	$(CHMOD) -R 660 $(INSTALLHISCORES)/*
 
 install-binary: $(INSTALLBIN)
 
@@ -90,7 +95,7 @@ oggs:
 build: asylum$(EXE)
 
 asylum$(EXE): $(SRCS) $(OS_SOURCE) asylum.h Makefile
-	$(CC) $(CFLAGS) $(LDFLAGS) -o asylum$(EXE) $(SRCS) $(OS_SOURCE) $(LIBS)
+	$(CC) $(COPTS) $(LDFLAGS) -o asylum$(EXE) $(SRCS) $(OS_SOURCE) $(LIBS)
 
 clean:
 	$(RM) asylum$(EXE)

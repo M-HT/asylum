@@ -18,19 +18,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <signal.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
 
 #include "asylum_os.h"
 #include "asylum.h"
-
-#ifndef RESOURCEPATH
-#define RESOURCEPATH "/usr/share/games/asylum"
-#endif
-#ifndef SCOREPATH
-#define SCOREPATH "/var/games/asylum"
-#endif
 
 #define _firstzone 0
 
@@ -64,8 +56,6 @@ int plzone;
 
 void init()
 {
-    gethandlers();
-
 // SWI "FastSpr_GetAddress";
 // set up fspplot, fspvars, fspareat=fspvars+24
     vduread(options.fullscreen);
@@ -361,34 +351,18 @@ int checkifextend()
 char buffer[256];
 
 //.hta
-void errorhandler(int r0)
+void errorhandler()
 {
     losehandlers();
     exit(printf("Error from Asylum:\n%s", buffer+4));
 }
 
-void exithandler(int r0)
+void exithandler()
 {
     losehandlers();
-    exit(255);
+    exit(0);
 }
 
-void upcallhandler(int sig)
-{
-    if (sig == SIGTERM)
-    {
-        losehandlers(); exit(0);
-    }
-    if (sig == SIGINT)
-    {
-        losehandlers(); exit(0);
-    }
-}
-
-void gethandlers()
-{
-    signal(SIGTERM, upcallhandler); signal(SIGINT, upcallhandler); return;
-}
 void losehandlers()
 {
     SDL_Quit(); return;
@@ -482,7 +456,7 @@ void c_array_initializers()
 {
     init_projsplittab(); init_rocketbursttab(); init_alspintab(); init_rockettab();
     init_palette(); init_splittab();
-    load_voices(); init_sounds();
+    load_voices();
     init_keyboard();
 }
 
@@ -497,6 +471,9 @@ int main(int argc, char** argv)
         dumpmusic(argc,argv);
         exit(0);
     }
+    
+    open_scores();
+    dropprivs();
 
     SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
     SDL_WM_SetCaption("Asylum", "Asylum");
@@ -542,7 +519,9 @@ char deathmusicpath[] = "./Resources/Music2";
 int getfiles()
 {
     getvitalfiles();
+    setfullclip();
     showloading();
+    init_sounds();
     getmusicfiles();
     swi_bodgemusic_start(1, 0);
     getgamefiles();

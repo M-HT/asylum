@@ -119,6 +119,9 @@ void update_keyboard()
             case SDL_BUTTON_RIGHT: mouse &= ~1; break;
             }
             break;
+        case SDL_QUIT:
+            exithandler();
+            break;
         }
     }
 }

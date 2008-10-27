@@ -18,13 +18,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <dirent.h>
+#include <limits.h>
 
 #include "asylum.h"
 
 #define STOREAREALEN (16*0x40000)
-
-int installed;
 
 char storage[STOREAREALEN];
 #define storageend (storage+STOREAREALEN)
@@ -35,6 +33,13 @@ static char resource_path[240];
 static char score_path[240];
 
 char configname[] = "/.asylum"; //"<PsychoResource$Path>Config";
+
+static const char* score_name[4] = {
+    "/EgoHighScores", "/PsycheHighScores", "/IdHighScores", "/ExtendedHighScores"
+};
+
+FILE* score_file[4];
+
 
 FILE* find_config(int op)
 {
@@ -58,37 +63,10 @@ FILE* find_config(int op)
 void dropprivs()
 {
 #ifndef _WIN32
-    setegid(getgid());
-    seteuid(getuid());
+    setregid(getgid(), getgid());
+    setreuid(getuid(), getuid());
 #endif
 }
-
-void set_resource_path()
-{
-	resource_path[0] = '\0';
-	if(chdir(RESOURCEPATH) == 0) {
-		strcpy(resource_path, RESOURCEPATH);
-#ifdef HAVE_GET_EXE_PATH
-	} else {
-		get_exe_path(resource_path, sizeof(resource_path));
-		strcat(resource_path, "/data");
-#endif
-	}
-}
-
-void set_score_path()
-{
-	score_path[0] = '\0';
-	if(chdir(SCOREPATH) == 0) {
-		strcpy(score_path, SCOREPATH);
-#ifdef HAVE_GET_EXE_PATH
-	} else {
-		get_exe_path(score_path, sizeof(score_path));
-		strcat(score_path, "/hiscores");
-#endif
-	}
-}
-
 
 
 uint32_t read_littleendian(uint32_t* word)
@@ -185,76 +163,99 @@ int loadfile(char** spaceptr, char* r1, char* path)
     return r4;
 }
 
-char egosave[] = "/EgoHighScores";
-char psychesave[] = "/PsycheHighScores";
-char idsave[] = "/IdHighScores";
-char extendedsave[] = "/ExtendedHighScores";
-char testsave[] = "/TestPermissions";
+void set_paths()
+{
+#ifdef RESOURCEPATH
+    if (chdir(RESOURCEPATH) == 0)
+    {
+        strcpy(resource_path, RESOURCEPATH);
+        strcpy(score_path, SCOREPATH);
+        /* We could fall back to ~/.asylum/ if SCOREPATH is not writable.
+           However just assuming the current directory is ok is not cool. */
+        return;
+    }
+#endif
+
+    fprintf(stderr, "Running as uninstalled, looking for files in local directory.\n");
+
+#ifdef HAVE_GET_EXE_PATH
+    char exe_path[240];
+    if (get_exe_path(exe_path, sizeof(exe_path)))
+    {
+        strcpy(resource_path, exe_path);
+        strncat(resource_path, "/data");
+
+        strcpy(score_path, exe_path);
+        strcat(score_path, "/hiscores");
+        return;
+    }
+#endif
+
+    strcpy(resource_path, "data");
+    strcpy(score_path, "../hiscores"); /* relative to resource_path */
+}
+
+void open_scores()
+{
+    char filename[PATH_MAX];
+
+    for (int i = 0; i < 4; ++i)
+    {
+        strcpy(filename, score_path);
+        strcat(filename, score_name[i]);
+        score_file[i] = fopen(filename, "r+b");
+        if (score_file[i] == NULL)
+        {
+            // Perhaps the file didn't exist yet
+            score_file[i] = fopen(filename, "w+b");
+            if (score_file[i] == NULL)
+            {
+                // Perhaps we don't have write permissions :(
+                score_file[i] = fopen(filename, "rb");
+                if (score_file[i] == NULL)
+                    fprintf(stderr, "Couldn't open %s, check if the directory exists\n", filename);
+                else
+                    fprintf(stderr, "Opening %s read-only, high scores will not be saved\n", filename);
+            }
+        }
+    }
+}
 
 void find_resources()
 {
-    char r1[240], cwd[240];
-    getcwd(cwd, 240);
-    set_resource_path();
-    set_score_path();
-    chdir(cwd);
-    strcpy(r1, score_path);
-    strcat(r1, testsave);
-    FILE* permission_test = fopen(r1, "w");
-    installed = (NULL != permission_test);
-    if (installed)
+    set_paths();
+    if (chdir(resource_path) != 0)
     {
-        fclose(permission_test); unlink(r1);
-        if (chdir(resource_path))
-        {
-            fprintf(stderr, "Couldn't find resources directory %s\n", RESOURCEPATH);
-            exit(1);
-        }
-    }
-    else
-    {
-        fprintf(stderr, "Running as uninstalled, looking for files in local directory.\n");
-        if (chdir("./data"))
-        {
-            fprintf(stderr, "Couldn't find resources directory ./data\n");
-            exit(1);
-        }
+        fprintf(stderr, "Couldn't find resources directory %s\n", resource_path);
+        exit(1);
     }
 }
 
 void savescores(char* highscorearea, int mentalzone)
 {
     highscorearea[13*5] = swi_oscrc(0, highscorearea, highscorearea+13*5, 1);
-    char r1[240];
-    strcpy(r1, score_path);
-    if (!installed) strcpy(r1, "../hiscores");
-    switch (mentalzone)
+    if (mentalzone >= 1 && mentalzone <= 4 && score_file[mentalzone - 1] != NULL)
     {
-    case 2: strcat(r1, psychesave); break;
-    case 3: strcat(r1, idsave); break;
-    case 4: strcat(r1, extendedsave); break;
-    default: strcat(r1, egosave);
+        FILE * f = score_file[mentalzone - 1];
+        fseek(f, 0, SEEK_SET);
+        fwrite(highscorearea, 1, 13*5+1, f);
+        fflush(f);
     }
-    swi_osfile(10, r1, highscorearea, highscorearea+13*5+1);
-    if (installed) chmod(r1, 0660);
 }
 
 void loadscores(char* highscorearea, int mentalzone)
 {
-    char r1[240];
-    strcpy(r1, score_path);
-    if (!installed) strcpy(r1, "../hiscores");
-    switch (mentalzone)
+    if (mentalzone >= 1 && mentalzone <= 4 && score_file[mentalzone - 1] != NULL)
     {
-    case 2: strcat(r1, psychesave); break;
-    case 3: strcat(r1, idsave); break;
-    case 4: strcat(r1, extendedsave); break;
-    default: strcat(r1, egosave);
+        FILE * f = score_file[mentalzone - 1];
+        fseek(f, 0, SEEK_SET);
+        if (fread(highscorearea, 1, 13*5+1, f) == 13*5+1 &&
+            swi_oscrc(0, highscorearea, highscorearea+13*5, 1) == highscorearea[13*5])
+        {
+            return;
+        }
     }
-    if (swi_osfile(0xff, r1, highscorearea, highscorearea+13*5+1))
-        setdefaultscores();
-    else if (swi_oscrc(0, highscorearea, highscorearea+13*5, 1)
-             != highscorearea[13*5]) setdefaultscores();
+    setdefaultscores();
 }
 
 int filelength(char* name, char* path)

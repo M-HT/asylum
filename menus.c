@@ -27,7 +27,6 @@ extern char plscore[8];
 
 char highscorearea[13*5+1];           //=&D000
 char hstindex;
-char initials[3];
 
 int escapehandler()
 {
@@ -713,7 +712,7 @@ void updatehst()
                 showhst();
                 swi_blitz_wait(4);
             }
-            initials[3-r8] = *r10;
+            options.initials[3-r8] = *r10;
             swi_stasis_link(1, 18);
             swi_stasis_volslide(1, 0, 0);
             swi_sound_control(1, 0x17c, 140, 0);
@@ -757,7 +756,7 @@ void showhst()
         for (; *r10 > 0xa; r10++)
         {
            showhstloop:
-            fspplot(charsadr, *r10-'0', x, y);
+            if (*r10 != ' ') fspplot(charsadr, *r10-'0', x, y);
             x += 16;
         }
        showhstnewline:

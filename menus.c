@@ -98,10 +98,11 @@ int options_menu(int gameon)
         message(32, 128, 0, 0, "2. Tune Game Options");
         message(88, 224, 0, 0, "Fire - Play");
         if (gameon == 0) message(32, 160, 0, 0, "3. Choose Mental Zone");
+        else message(32, 160, 0, 0, "3. Save Position");
 // if (savedornot==1) message(32,192,0,0,"4. Save Settings");
         showtext();
         swi_blitz_wait(20); //
-        switch (readopt((gameon == 0) ? 3 : 2))
+        switch (readopt((gameon == 0) ? 3 : 3))
         {
         case -1: optionexit: return 1;
         case  1: choosecontrol(); dosaveconf(); break;
@@ -110,6 +111,8 @@ int options_menu(int gameon)
             {
                 getzone(); dosaveconf();
             }
+            else
+                savegame();
             break;
 //case  4: if (savedornot==1) dosaveconf(); break;
         default: soundupdate(); return 0;
@@ -135,7 +138,7 @@ void getzone()
     message(64, 160, 0, 0, "3. Id");
     if (checkifextend())
     {
-        message(64, 192, 0, 0, "4. Extended Level");
+        message(64, 192, 0, 0, "4. Saved Game");
         r0 = 4;
     }
     else r0 = 3;
@@ -171,7 +174,6 @@ void choosecontrol()
     message(96, 48, 0, 0, "Controls");
     message(64, 96, 0, 0, "1. Keyboard");
     message(64, 128, 0, 0, "2. Joystick");
-    if (checkifextend()) message(64, 160, 0, 0, "3. Fnord");
     showtext();
     switch (readopt(2))
     {

@@ -33,6 +33,7 @@ static char resource_path[240];
 static char score_path[240];
 
 char configname[] = "/.asylum"; //"<PsychoResource$Path>Config";
+char savegamename[] = "/.asylum_game";
 
 static const char* score_name[4] = {
     "/EgoHighScores", "/PsycheHighScores", "/IdHighScores", "/ExtendedHighScores"
@@ -40,6 +41,25 @@ static const char* score_name[4] = {
 
 FILE* score_file[4];
 
+
+FILE* find_game(int op)
+{
+    char fullname[240] = "";
+
+    char* home = getenv("HOME");
+    if (home)
+	strcat(fullname, home);
+    else
+	return NULL;
+    strcat(fullname, savegamename);
+    switch (op)
+    {
+    case 0x40: return fopen(fullname, "rb");
+    case 0x80: return fopen(fullname, "wb");
+    case 0xc0: return fopen(fullname, "ab");
+    default: return NULL;
+    }
+}
 
 FILE* find_config(int op)
 {
@@ -68,12 +88,22 @@ void dropprivs()
 #endif
 }
 
+uint32_t read_littleendian(uint8_t* bytes)
+{
+    return (*bytes)|(bytes[1]<<8)|(bytes[2]<<16)|(bytes[3]<<24);
+}
 
 uint32_t read_littleendian(uint32_t* word)
 {
-    uint8_t* bytes = (uint8_t*)word;
+    return read_littleendian((uint8_t*)word);
+}
 
-    return (*bytes)|(bytes[1]<<8)|(bytes[2]<<16)|(bytes[3]<<24);
+void write_littleendian(uint8_t* bytes, uint32_t word)
+{
+    *bytes = word & 0xff;
+    bytes[1] = (word>>8) & 0xff;
+    bytes[2] = (word>>16) & 0xff;
+    bytes[3] = (word>>24) & 0xff;
 }
 
 int loadhammered_game(char** spaceptr, char* r1, char* path)

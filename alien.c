@@ -74,7 +74,6 @@ int alctr;
 
 int* platsandstr;
 #define _savearealen (0x9c0/32)
-alent saveareaalents[_savearealen+1]; // &C000
 
 Mix_Chunk* CHUNK_EXPLO;
 Mix_Chunk* CHUNK_ATOM;
@@ -1795,40 +1794,57 @@ void atomexplogo(int r1, int r2, int r3, int r4, int r5, int r6, alent* r10)
     return;
 }
 
-void save_alents()
+void save_alents(uint8_t store[_savearealen*28])
 {
-    alent* r10b = saveareaalents;
-    alent* r7 = r10b+_savearealen;
-    alent* r11 = aladr;
+    uint8_t* st = store;
+    uint8_t* st_end = st+(_savearealen-1)*28;
+    alent* al = aladr;
     for (int r9 = _alno; r9 > 0; r9--)
     {
        procsaveal:
-        if (r10b >= r7) break;
-        switch (r11->type)
+        if (st >= st_end) break;
+        switch (al->type)
         {
         case _Explo: //don't save these
         case _Scoreobj:
         case _Flyingbonus:
         case _Dyingbonus:
         case 0:
-            r11++; break;
+            al++; break;
         default:
-            *r10b = *r11;
-            r10b++;
-            r11++;
+            write_littleendian(st, al->type);
+            write_littleendian(st+4, al->x);
+            write_littleendian(st+8, al->y);
+            write_littleendian(st+12, al->dx);
+            write_littleendian(st+16, al->dy);
+            write_littleendian(st+20, al->r5);
+            write_littleendian(st+24, al->r6);
+            st += 28;
+            al++;
         }
     }
 
-    r10b->type = -1; // end marker
+    write_littleendian(st, 0xffffffff); // end marker
 }
 
-void restore_alents()
+void restore_alents(uint8_t store[_savearealen*28])
 {
-    alent* r10 = aladr;
-    alent* r11b = saveareaalents;
-    for (; r11b->type != -1;)
+    alent* al = aladr;
+    uint8_t* st = store;
+    uint8_t* st_end = st+(_savearealen-1)*28;
+    for (; (read_littleendian(st) != 0xffffffff) && (st < st_end);)
+    {
        sl1:
-        *(r10++) = *(r11b++);
+        al->type = read_littleendian(st);
+        al->x = read_littleendian(st+4);
+        al->y = read_littleendian(st+8);
+        al->dx = read_littleendian(st+12);
+        al->dy = read_littleendian(st+16);
+        al->r5 = read_littleendian(st+20);
+        al->r6 = read_littleendian(st+24);
+        al++;
+        st += 28;
+    }
 }
 
 int softmakeobj(int r0, int r1, int r2, int r3, int r4, int r5, int r6)

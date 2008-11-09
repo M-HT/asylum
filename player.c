@@ -40,13 +40,11 @@ char pluphit, firerate;
 char rocketflag, electrocuting, platuphit;
 char blamctr, rocketblamctr, plotterofs, hiddenplatctr, extending;
 char bonusctr;
-char bonusstore;
 int16_t bonusreplot;
 int windctr;
 int firelastframe;
 int rocketctr;
 int shutdownctr;
-char plweaponstore;
 char atombombctr;
 int laststrength;
 int telepctr;
@@ -104,31 +102,44 @@ Mix_Chunk* CHUNK_OBJGOT[10];
 
 char *pladr1, *pladr2, *pladr3, *pladr4, *pladr5, *pladr6, *pladr7, *pladr8;
 int pllx, plly, plhx, plhy;
-int saveareaints[8];
 
 const int _savevalid = 0x4b4f6349;
 
-void save_player()
+void save_player_state(uint8_t store[24])
 {
-    bonusstore = bonusctr;
-    plweaponstore = plweapontype;
-    int* r10 = saveareaints;
-    *(r10++) = _savevalid;
-    *(r10++) = xpos; *(r10++) = ypos;
-    *(r10++) = initplx; *(r10++) = initply;
-    *(r10++) = hvec; *(r10++) = vvec;
+    write_littleendian(store, lives);
+    write_littleendian(store+4, plstrength);
+    write_littleendian(store+8, neuronctr);
+    write_littleendian(store+12, shutdownctr);
+    memcpy(store+16, plscore, 8);
 }
 
-int restore_player()
+void restore_player_state(uint8_t store[24])
 {
-    bonusctr = bonusstore;
-    plweapontype = plweaponstore;
-    int* r11 = saveareaints;
-    if (_savevalid != *r11) return 1;
-    *(r11++) = 0;
-    xpos = *(r11++); ypos = *(r11++);
-    initplx = *(r11++); initply = *(r11++);
-    hvec = *(r11++); vvec = *(r11++);
+    lives = read_littleendian(store);
+    plstrength = read_littleendian(store+4);
+    neuronctr = read_littleendian(store+8);
+    shutdownctr = read_littleendian(store+12);
+    memcpy(plscore, store+16, 8);
+}
+
+void save_player(uint8_t store[30])
+{
+    write_littleendian(store, _savevalid);
+    write_littleendian(store+4, xpos); write_littleendian(store+8, ypos);
+    write_littleendian(store+12, initplx); write_littleendian(store+16, initply);
+    write_littleendian(store+20, hvec); write_littleendian(store+24, vvec);
+    store[28] = bonusctr; store[29] = plweapontype;
+}
+
+int restore_player(uint8_t store[30])
+{
+    if (_savevalid != read_littleendian(store)) return 1;
+    write_littleendian(store, 0);
+    xpos = read_littleendian(store+4); ypos = read_littleendian(store+8);
+    initplx = read_littleendian(store+12); initply = read_littleendian(store+16);
+    hvec = read_littleendian(store+20); vvec = read_littleendian(store+24);
+    bonusctr = store[28]; plweapontype = store[29];
     return 0;
 }
 
@@ -1240,6 +1251,11 @@ void restartplayer()
     xpos = initplx;
     ypos = initply;
     screenwakeup(xpos, ypos);
+    reinitplayer();
+}
+
+void reinitplayer()
+{
     telepctr = 33;
 //bonusctr=0; (commented out in original)
     bonusreplot = 28;

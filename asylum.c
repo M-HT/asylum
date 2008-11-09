@@ -15,9 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
 
@@ -127,7 +124,8 @@ int game()
     do
     {
        zonerestart:
-        restartplayer();
+        if (options.mentalzone == 4)  loadgame();
+        else  restartplayer();
         do
         {
            mainrestart:
@@ -223,17 +221,21 @@ void showtext()
     switchbank();
 }
 
-void saveal()
+uint8_t store_for_neuron[30+78*28];
+uint8_t store_for_savegame[30+78*28];
+uint8_t store_player_state[25];
+
+void saveal(uint8_t store[30+78*28])
 {
-    save_player();
-    save_alents();
+    save_player(store);
+    save_alents(store+30);
 }
 
-void restoreal()
+void restoreal(uint8_t store[30+78*28])
 {
-    if (restore_player()) return;
+    if (restore_player(store)) return;
     wipealtab();
-    restore_alents();
+    restore_alents(store+30);
    restored:;
 }
 
@@ -342,9 +344,7 @@ void checkifarm3()
 
 int checkifextend()
 {
-    //swi_XOS_ReadVarVal("PsychoExtend$Path",&buf,1<<31,0);
-    return 0;
-    //return (r2!=0); // z flag
+    return (NULL != find_game(0x40));
 }
 
 
@@ -383,7 +383,7 @@ void change_zone(int zone)
 
 void enterneuron(int r1)
 {
-    if (r1 == 0) saveal();
+    if (r1 == 0) saveal(store_for_neuron);
     currentzone = plzone = getneuronfiles(plzone);
     if (!currentzone)
     {
@@ -403,7 +403,7 @@ void enterneuron(int r1)
 void exitneuron(int r1)
 {
     boardadr = brainadr;
-    restoreal();
+    restoreal(store_for_neuron);
     initweapon();
     initprojtab();
     initbultab();
@@ -570,7 +570,7 @@ int getlevelfiles()
     {
     case 2: currentpath = psychepath; break;
     case 3: currentpath = idpath; break;
-    case 4: currentpath = extendpath; break;
+    case 4: currentpath = psychepath /*XXX*/; break;
     default: currentpath = egopath;
     }
    load4:
@@ -718,6 +718,61 @@ void saveconfig()
 	                         options.initials[1],
 	                         options.initials[2],
             ((options.idpermit == 1) ? idpermitstring : ""));
+    fclose(r0);
+}
+
+void loadgame()
+{
+    FILE* r0 = find_game(0x40);
+    if (r0 == NULL) /* XXX failing silently is bad */ return;
+    //uint8_t dimensions[8];
+    fread(&options.mentalzone, 1, 1, r0);
+    fread(&plzone, 1, 1, r0);  currentzone = plzone;
+    fread(store_player_state, 1, 25, r0);
+    restore_player_state(store_player_state);
+    getlevelfiles();
+    fread(store_for_savegame, 1, 30+78*28, r0);
+    fread(store_for_neuron, 1, 30+78*28, r0);
+    restoreal(store_for_savegame);
+    //fread(dimensions, 8, 1, r0);
+    //brainadr->width = read_littleendian(dimensions);
+    //brainadr->height = read_littleendian(dimensions+4);
+    fread(brainadr->contents, brainadr->width, brainadr->height, r0);
+    if (plzone)
+    {
+        getneuronfiles(plzone); /* HACK determine dimensions and allocate neuronadr */
+        //neuronadr->width = read_littleendian(dimensions);
+        //neuronadr->height = read_littleendian(dimensions+4);
+        fread(neuronadr->contents, neuronadr->width, neuronadr->height, r0);
+    }
+    fclose(r0);
+    backprep(backadr);
+    boardreg();
+    reinitplayer();
+}
+
+void savegame()
+{
+    FILE* r0 = find_game(0x80);
+    if (r0 == NULL) /* XXX failing silently is bad */ return;
+    //uint8_t dimensions[8];
+    fwrite(&options.mentalzone, 1, 1, r0);
+    fwrite(&plzone, 1, 1, r0);
+    save_player_state(store_player_state);
+    fwrite(store_player_state, 1, 25, r0);
+    saveal(store_for_savegame);
+    fwrite(store_for_savegame, 1, 30+78*28, r0);
+    fwrite(store_for_neuron, 1, 30+78*28, r0);
+    //write_littleendian(dimensions, brainadr->width);
+    //write_littleendian(dimensions+4, brainadr->height);
+    //fwrite(dimensions, 8, 1, r0);
+    fwrite(brainadr->contents, brainadr->width, brainadr->height, r0);
+    if (plzone)
+    {
+        //write_littleendian(dimensions, neuronadr->width);
+        //write_littleendian(dimensions+4, neuronadr->height);
+        fwrite(neuronadr->contents, neuronadr->width, neuronadr->height, r0);
+    }
     fclose(r0);
 }
 

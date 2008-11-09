@@ -18,7 +18,9 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
 
-#define random rand
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
 
 #define PROJ_TTL (1<<16)
 #define PROJ_ROCKET (1<<15)
@@ -186,10 +188,12 @@ void boxcheck(int r4, int r5, char** r7, char* r8, char* r9);
 void dowakeup(char* r7);
 void saveal();
 void restoreal();
-void save_player();
-int restore_player();
-void save_alents();
-void restore_alents();
+void save_player_state(uint8_t*);
+void restore_player_state(uint8_t*);
+void save_player(uint8_t*);
+int restore_player(uint8_t*);
+void save_alents(uint8_t*);
+void restore_alents(uint8_t*);
 void moval();
 void procal(alent* r11);
 void alienwander(alent* r11, char* r5);
@@ -357,6 +361,7 @@ void set_player_clip();
 void writeclip();
 void releaseclip();
 void restartplayer();
+void reinitplayer();
 void redraw_bonus();
 void completedzone();
 void findplayer(int *initplx, int *initply);
@@ -389,6 +394,8 @@ void permitid();
 void dropprivs();
 void loadconfig();
 void saveconfig();
+void loadgame();
+void savegame();
 int getfiles();
 void getvitalfiles();
 void getmusicfiles();
@@ -487,6 +494,7 @@ int osbyte_7a();
 void osbyte_7c();
 int osbyte_81(int c);
 char swi_oscrc(int w, char* start, char* end, int bytes);
+FILE* find_game(int op);
 FILE* find_config(int op);
 void swi_osgbpb(int n, FILE* f, char* start, char* end, int b);
 int swi_osfile(int op, const char* name, char* start, char* end);
@@ -519,7 +527,9 @@ void soundclaimexplo(int r0, char r1, char r2, int r3, int r4, int r5, char r6, 
                  Mix_Chunk* chunk);
 void init_mulaw();
 void init_audio();
+uint32_t read_littleendian(uint8_t* word);
 uint32_t read_littleendian(uint32_t* word);
+void write_littleendian(uint8_t* bytes, uint32_t word);
 void init_projsplittab();
 void init_rockettab();
 void init_rocketbursttab();

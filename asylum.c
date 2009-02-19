@@ -55,16 +55,17 @@ void init()
 {
 // SWI "FastSpr_GetAddress";
 // set up fspplot, fspvars, fspareat=fspvars+24
-    vduread(options.fullscreen);
+    setdefaults();
+    vduread(options);
     swi_removecursors();
     bank = 1;
-    switchbank()      ; //set up bank variables
-    switchbank()      ; //set up bank variables
+    switchbank(); //set up bank variables
+    switchbank(); //set up bank variables
     checkifarm3();
     if (getfiles()) abort_game();
     setdefaults();
     loadconfig();
-    vduread(options.fullscreen); // set screen size from options
+    vduread(options); // set screen size from options
 
     scorezero();
     cheatpermit = prelude();
@@ -262,6 +263,9 @@ void setdefaults()
     options.gearchange = (arm3 == 0) ? 0 : 1;
     options.explospeed = (arm3 == 0) ? 2 : 1;
     options.fullscreen = 0;
+    options.opengl = 1;
+    options.size = 1; // 640 x 512
+    options.scale = 1;
     options.joyno = 0;
     options.mentalzone = 1;
     options.initials[0] = 'P';

@@ -8,7 +8,7 @@ CFLAGS= -O3
 COPTS=  $(CFLAGS) -funsigned-char \
 	-DRESOURCEPATH=\"$(INSTALLRESOURCEPATH)\" \
 	-DSCOREPATH=\"$(INSTALLHISCORES)\"
-LIBS= -lm -lSDL -lSDL_mixer
+LIBS= -lm -lSDL -lSDL_mixer -lGL -lGLU
 SRCS= alien.c asylum.c bullet.c file.c keyboard.c maze.c menus.c player.c projectile.c sound.c vdu.c
 
 RESOURCES=data/Resources data/Ego data/Psyche data/Id data/Voices

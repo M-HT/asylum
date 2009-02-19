@@ -267,7 +267,7 @@ void decoration(alent* r11)
     if ((r11->r5 -= (1<<16)) < 0)
         r11->type = 0;
     if (masterplotal == 0) return;
-    fspplot(blokeadr, r11->r5&0xff, _xofs+(r11->x>>8), _yofs+8+(r11->y>>8));
+    mazescaleplot(blokeadr, r11->r5&0xff, _xofs+(r11->x>>8), _yofs+8+(r11->y>>8));
 }
 
 void extender(alent* r11)

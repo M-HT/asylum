@@ -1209,13 +1209,12 @@ void bonusplot()
     if (bonustimer != 0) bonustimer -= r2;
     if ((bonustimer == 1) || (bonustimer == 2)) bonusreset();
 
-    if ((bonusctr >= 13) && (bonusreplot == 0))
+    if (bonusreplot)
     {
-        bonusbonus(); return;
+        bonusreplot -= r2; //from above
+        if (bonusreplot < 0) bonusreplot = 0;
     }
-    if (bonusreplot == 0) return;
-    bonusreplot -= r2; //from above
-    if (bonusreplot < 0) bonusreplot = 0;
+    else if (bonusctr >= 13) bonusbonus();
     plotbonus(bonusctr, bonusreplot);
 }
 

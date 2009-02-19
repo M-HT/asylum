@@ -695,11 +695,11 @@ void boardreg()
 
 
 
-void draw_block(fastspr_sprite* blockadr, int block, int x, int y, int layer)
+void draw_block(fastspr_sprite* blockadr, int block, float x, float y, int layer)
 {
     if (layer)
     {
-	if ((block >= 8) && (block < 12)) fspplot(blockadr, block, x, y);
+	if ((block >= 8) && (block < 12)) mazescaleplot(blockadr, block, x, y);
 	return;
     }
     if ((block == 0) || ((block >= 8) && (block < 12))) return; // was if (block==0)
@@ -717,7 +717,7 @@ void draw_block(fastspr_sprite* blockadr, int block, int x, int y, int layer)
    noanimate:
     if ((block >= _weaplowlim+1) && (block <= _weaplowlim+6))
 	block = _weaplowlim+1;
-    fspplot(blockadr, block, x, y);
+    mazescaleplot(blockadr, block, x, y);
 }
 
 void init_chunk_maze()

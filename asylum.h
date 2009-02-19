@@ -17,6 +17,8 @@
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -86,8 +88,8 @@
 
 const int fullpitch = 0x2155;
 
-typedef struct fastspr_sprite { int x; int y;
-                                SDL_Surface* s; } fastspr_sprite;
+typedef struct fastspr_sprite { int x; int y; int w; int h; GLuint t;
+                                int texw; int texh; SDL_Surface* s; } fastspr_sprite;
 
 typedef struct board { int first_int; int width; int height;
                        int fourth; int fifth; int sixth; int seventh; int eighth;
@@ -122,7 +124,7 @@ typedef struct bulent
 typedef struct asylum_options
 {
     char soundtype, soundquality, explospeed, gearchange;
-    char fullscreen, mentalzone;
+    char fullscreen, opengl, size, scale, mentalzone;
     int leftkey, rightkey, upkey, downkey, firekey;
     char soundvol, musicvol, joyno;
     char idpermit;
@@ -134,6 +136,7 @@ typedef struct key_state
 } key_state;
 
 void fspplot(fastspr_sprite*, char, int, int);
+void mazescaleplot(fastspr_sprite*, char, float, float);
 void relplot(fastspr_sprite*, char, int, int);
 void cenplot(fastspr_sprite*, char, int, int);
 void blokeplot(fastspr_sprite*, char, int, int);
@@ -349,7 +352,7 @@ void elecdelete(int r4, char* r10);
 void deletetwin(char* r5);
 void deletepoint();
 void mazeplot(int xpos, int ypos);
-void draw_block(fastspr_sprite* blockadr, int block, int x, int y, int layer);
+void draw_block(fastspr_sprite* blockadr, int block, float x, float y, int layer);
 void backdrop(int xpos, int ypos);
 int escapehandler();
 void loselife();
@@ -451,7 +454,7 @@ int player_dead();
 void screensave();
 void getvars();
 void init_palette();
-void vduread(char fullscreen);
+void vduread(asylum_options);
 int main(int argc, char** argv);
 void load_voices();
 void init_sounds();
@@ -473,7 +476,8 @@ void deleteobj(alent* r11);
 void blowup(alent* r11);
 void plotarms();
 void plattoobj(char* r0);
-SDL_Surface* decomp(char* r11);
+//SDL_Surface* decomp(char* r11);
+void decomp(fastspr_sprite* DecompScreen, char* r11);
 void soundupdate();
 void losehandlers();
 void initrockettab();

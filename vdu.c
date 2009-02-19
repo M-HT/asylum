@@ -1,6 +1,6 @@
 /*  vdu.c */
 
-/*  Copyright Hugh Robinson 2006-2008.
+/*  Copyright Hugh Robinson 2006-2009.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,9 @@
 #include <SDL/SDL.h>
 
 #include "asylum.h"
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <math.h>
 
 extern fastspr_sprite charsadr[48];
 extern fastspr_sprite blockadr[256];
@@ -29,6 +32,7 @@ extern const char _bonuslow;
 
 struct vduvar
 {
+    int xreso; int yreso;
     int width; int height;
     int gamex; int gamey;
     int gameh; int gamew;
@@ -40,11 +44,14 @@ struct vduvar
     int strengthx; int strengthy;
     int strengthw; int strengthh;
     int bonusx; int bonusy; int bonush;
+    int opengl;
 } vduvar;
 
 SDL_Surface* ArcScreen;
-SDL_Surface* GameScreen;
-SDL_Surface* ChatScreen;
+//SDL_Surface* GameScreen;
+//SDL_Surface* ChatScreen;
+fastspr_sprite GameScreen;
+fastspr_sprite ChatScreen;
 SDL_Surface* backsprite;
 SDL_Surface* wipescr;
 SDL_Surface* redness;
@@ -69,23 +76,61 @@ void switchbank()
 {
     //osbyte_71();
     //swi_blitz_screenretrieve();
-    SDL_Flip(ArcScreen);
+    if (vduvar.opengl) SDL_GL_SwapBuffers();
+    else SDL_Flip(ArcScreen);
+}
+
+void fspplotscaled(fastspr_sprite* sprites, char n, float x, float y,
+		   float xs, float ys)
+{
+    fastspr_sprite sprite = sprites[(char)n];
+    static SDL_Rect pos;
+    float w = sprite.w*xs, h = sprite.h*ys;
+    float posx = x-sprite.x*xs, posy = y-sprite.y*ys;
+
+
+    if (vduvar.opengl)
+    {
+	// This rescales as requested ...
+	glBindTexture(GL_TEXTURE_2D, sprite.t);
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glColor4f(1,1,1,1);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBegin(GL_TRIANGLE_STRIP);
+	glTexCoord2f(1.0/sprite.texw, 1.0/sprite.texh);
+	glVertex3f(posx, posy, 0.0);
+	glTexCoord2f((sprite.w+1.0)/sprite.texw, 1.0/sprite.texh);
+	glVertex3f(posx+w, posy, 0.0);
+	glTexCoord2f(1.0/sprite.texh, (sprite.h+1.0)/sprite.texh);
+	glVertex3f(posx, posy+h, 0.0);
+	glTexCoord2f((sprite.w+1.0)/sprite.texw, (sprite.h+1.0)/sprite.texh);
+	glVertex3f(posx+w, posy+h, 0.0);
+	glEnd();
+    }
+    else
+    {
+	// ... this doesn't.
+	pos.x = (int)posx;  pos.y = (int)posy;
+	SDL_BlitSurface(sprite.s, NULL, ArcScreen, &pos);
+    }
 }
 
 void fspplot(fastspr_sprite* sprites, char n, int x, int y)
 {
-    fastspr_sprite sprite = sprites[(char)n];
-    static SDL_Rect pos;
+    fspplotscaled(sprites, n, x, y, 1.0, 1.0);
+}
 
-    pos.x = x-sprite.x; pos.y = y-sprite.y;
-    SDL_BlitSurface(sprite.s, NULL, ArcScreen, &pos);
+void mazescaleplot(fastspr_sprite* sprites, char n, float x, float y)
+{
+    fspplotscaled(sprites, n, x, y, vduvar.sprw/16.0, vduvar.sprh/16.0);
 }
 
 void cenplot(fastspr_sprite* sprites, char n, int x, int y)
 {
-    fspplot(sprites, n,
-            ((x-1)*vduvar.sprw)/16+vduvar.gamex+(vduvar.gamew/2),
-            (y*vduvar.sprh)/16+vduvar.gamey+(vduvar.gameh/2)-(vduvar.sprh/2));
+    mazescaleplot(sprites, n,
+            ((x-1)*vduvar.sprw)/16.0+vduvar.gamex+(vduvar.gamew/2),
+            (y*vduvar.sprh)/16.0+vduvar.gamey+(vduvar.gameh/2)-(vduvar.sprh/2));
 }
 
 
@@ -138,8 +183,9 @@ void cenplotdying(fastspr_sprite* sprites, char n, int x, int y, int r5)
 
 void blokeplot_cen(fastspr_sprite* sprites, char n, int x, int y)
 {
-    fspplot(sprites, n, x+vduvar.gamex+(vduvar.gamew/2),
-            y+vduvar.gamey+(vduvar.gameh/2)-(vduvar.sprh/2));
+    mazescaleplot(sprites, n,
+		  (x*vduvar.sprw)/16.0+vduvar.gamex+(vduvar.gamew/2),
+		  (y*vduvar.sprh)/16.0+vduvar.gamey+(vduvar.gameh/2)-(vduvar.sprh/2));
 }
 
 void message_scroll(const char* a)
@@ -252,6 +298,7 @@ void texthandler()
 
 void mazeplot(int xpos, int ypos)
 {
+    if (vduvar.opengl) showgamescreen();
     writeclip();
     backdrop(xpos, ypos);
 
@@ -278,8 +325,8 @@ void mazeplot(int xpos, int ypos)
         for (; /*ins1:*/ (r4 < vduvar.xblocks+3)&(r6 < boardadr->width); /*skip1:*/ r4++, r6++)
         {
             r0 = *(boardadr->contents+boardwidth*r7+r6);
-	    draw_block(blockadr, r0, (r4*vduvar.sprw*15)/16+vduvar.xblocks/2+1+r8,
-		       (r5*vduvar.sprh*15)/16+vduvar.yblocks/2+1+r9, 1);
+	    draw_block(blockadr, r0, (r4*vduvar.sprw*15.0)/16+vduvar.xblocks/2+1+r8,
+		       (r5*vduvar.sprh*15.0)/16+vduvar.yblocks/2+1+r9, 1);
         }
     }
 // Now foreground ones
@@ -308,6 +355,7 @@ void mazeplot(int xpos, int ypos)
    skip2:;
 }
 
+GLuint batex[1];
 void backdrop(int xpos, int ypos)
 {
     //  swi_fastspr_clearwindow();
@@ -316,24 +364,51 @@ void backdrop(int xpos, int ypos)
 
     int r3 = ((xpos>>8)-(xpos>>10)+3072-768); // parallax
     int r2 = (44+48-(r3%48))%48;
+    float float_r3 = (xpos*3.0/1024)+3072-768;
+    float float_r2 = fmod(44+48-fmod(r3,48.0),48.0);
 
     int r4 = 0x1f&((ypos>>8)-(ypos>>10)); // parallax
+    float float_r4 = fmod(ypos*3.0/1024,32.0);
 
    modpos:
     back_to_blit.x = ((48-r2)*vduvar.backw)/48; back_to_blit.y = (r4*vduvar.backh)/32;
     back_to_blit.w = vduvar.backw; back_to_blit.h = vduvar.backh;
-
-    for (loc_to_blit.y = vduvar.gamey; loc_to_blit.y < vduvar.gamey+vduvar.gameh; loc_to_blit.y += vduvar.backh)
-        for (loc_to_blit.x = vduvar.gamex; loc_to_blit.x < vduvar.gamex+vduvar.gamew; loc_to_blit.x += vduvar.backw)
-            SDL_BlitSurface(backsprite, &back_to_blit, ArcScreen, &loc_to_blit);
+    
+    if (vduvar.opengl)
+    {
+	float btbx = 0.375*(48-float_r2)/48.0; float btby = 0.5*float_r4/32.0;
+	glBindTexture(GL_TEXTURE_2D, *batex);
+	glEnable(GL_TEXTURE_2D);
+	//glColor4f(1,1,1,1);
+	for (loc_to_blit.y = vduvar.gamey; loc_to_blit.y < vduvar.gamey+vduvar.gameh; loc_to_blit.y += vduvar.backh)
+	    for (loc_to_blit.x = vduvar.gamex; loc_to_blit.x < vduvar.gamex+vduvar.gamew; loc_to_blit.x += vduvar.backw)
+	    {	
+		glBegin(GL_TRIANGLE_STRIP);
+		glTexCoord2f(btbx+0.0, btby+0.0);
+		glVertex3f(loc_to_blit.x, loc_to_blit.y, 0.0);
+		glTexCoord2f(btbx+0.375, btby+0.0);
+		glVertex3f(loc_to_blit.x+vduvar.backw, loc_to_blit.y, 0.0);
+		glTexCoord2f(btbx+0.0, btby+0.5);
+		glVertex3f(loc_to_blit.x, loc_to_blit.y+vduvar.backh, 0.0);
+		glTexCoord2f(btbx+0.375, btby+0.5);
+		glVertex3f(loc_to_blit.x+vduvar.backw, loc_to_blit.y+vduvar.backh, 0.0);
+		glEnd();
+	    }
+    }
+    else
+    {
+        for (loc_to_blit.y = vduvar.gamey; loc_to_blit.y < vduvar.gamey+vduvar.gameh; loc_to_blit.y += vduvar.backh)
+	    for (loc_to_blit.x = vduvar.gamex; loc_to_blit.x < vduvar.gamex+vduvar.gamew; loc_to_blit.x += vduvar.backw)
+		SDL_BlitSurface(backsprite, &back_to_blit, ArcScreen, &loc_to_blit);
+    }
 }
 
 void plotbonus(char bonusctr, int16_t bonusreplot)
 {
     int fsplx, fsply, fsphx, fsphy;
-    fsplx = vduvar.bonusx-vduvar.sprw/2; // align to write clip window to FastSpr
+    fsplx = vduvar.bonusx-16/2; // align to write clip window to FastSpr
     fsply = vduvar.bonusy-vduvar.bonush;
-    fsphx = vduvar.bonusx+vduvar.sprw/2;
+    fsphx = vduvar.bonusx+16/2;
     fsphy = vduvar.bonusy+vduvar.bonush;
     swi_fastspr_setclipwindow(fsplx, fsply, fsphx, fsphy);
     swi_fastspr_clearwindow();
@@ -363,9 +438,9 @@ void showstrength(int r3)
     strengthpart.x = 0; strengthpart.y = framectr&0x1f;
     strengthpart.w = vduvar.strengthw;
     strengthpart.h = vduvar.strengthh;
-    SDL_BlitSurface(greyness, &strengthpart, ArcScreen, &strengthloc);
+    //SDL_BlitSurface(greyness, &strengthpart, ArcScreen, &strengthloc);
     strengthpart.w = (vduvar.strengthw*r3)/_strengthmax;
-    SDL_BlitSurface(redness, &strengthpart, ArcScreen, &strengthloc);
+    //SDL_BlitSurface(redness, &strengthpart, ArcScreen, &strengthloc);
     writeclip();
     return;
 }
@@ -378,7 +453,7 @@ void scorewipe()
     scorearea.y = vduvar.scorey-16/2;
     scorearea.w = 128; scorearea.h = 16;
     releaseclip();
-    SDL_BlitSurface(wipescr, NULL, ArcScreen, &scorearea);
+    //SDL_BlitSurface(wipescr, NULL, ArcScreen, &scorearea);
     writeclip();
 }
 
@@ -389,7 +464,7 @@ void scorewiperead()
     scorearea.x = vduvar.scorex;
     scorearea.y = vduvar.scorey-16/2;
     scorearea.w = 128; scorearea.h = 16;
-    SDL_BlitSurface(ArcScreen, &scorearea, wipescr, NULL);
+    //SDL_BlitSurface(ArcScreen, &scorearea, wipescr, NULL);
 }
 
 void showscore(char plscore[8])
@@ -435,13 +510,20 @@ void setfullclip()
 
 void writeclip()
 {
-    SDL_SetClipRect(ArcScreen, &clip);
+    swi_fastspr_setclipwindow(clip.x, clip.y, clip.x+clip.w, clip.y+clip.h);
+    //SDL_SetClipRect(ArcScreen, &clip);
 }
 
 void releaseclip()
 {
-    SDL_SetClipRect(ArcScreen, NULL);
-// 0, 0, 319, 255 ; size of mode
+    if (vduvar.opengl)
+    {
+	glDisable(GL_CLIP_PLANE0);
+	glDisable(GL_CLIP_PLANE1);
+	glDisable(GL_CLIP_PLANE2);
+	glDisable(GL_CLIP_PLANE3);
+    }
+    else SDL_SetClipRect(ArcScreen, NULL);
 }
 
 void clearkeybuf()
@@ -456,17 +538,17 @@ void showlives(int lives)
 {
     releaseclip();
     fspplot(charsadr, lives&7, vduvar.livesx, vduvar.livesy);
-    switchbank();
+    //switchbank();
     writeclip();
 }
 
 void showgamescreen()
 {
     releaseclip();
-    //SDL_SoftStretch(GameScreen,NULL,ArcScreen,NULL);
-    SDL_BlitSurface(GameScreen, NULL, ArcScreen, NULL);
+    //SDL_BlitSurface(GameScreen, NULL, ArcScreen, NULL);
+    fspplot(&GameScreen, 0, 0, 0);
     writeclip();
-    SDL_Flip(ArcScreen);
+    if (!vduvar.opengl) switchbank();
     scorewiperead();
     showlives();
 }
@@ -474,28 +556,28 @@ void showgamescreen()
 void showchatscreen()
 {
     releaseclip();
-    //SDL_SoftStretch(ArcScreen,NULL,DecompScreen,NULL);
-    SDL_BlitSurface(ChatScreen, NULL, ArcScreen, NULL);
+    //SDL_BlitSurface(ChatScreen, NULL, ArcScreen, NULL);
+    fspplot(&ChatScreen, 0, 0, 0);
     writeclip();
-    SDL_Flip(ArcScreen);
+    switchbank();
 }
 
 void showchatscores()
 {
     releaseclip();
-    //SDL_SoftStretch(ArcScreen,NULL,DecompScreen,NULL);
-    SDL_BlitSurface(ChatScreen, NULL, ArcScreen, NULL);
+    //SDL_BlitSurface(ChatScreen, NULL, ArcScreen, NULL);
+    fspplot(&ChatScreen, 0, 0, 0);
     writeclip();
 }
 
 void initialize_chatscreen(char* chatscreenadr)
 {
-    ChatScreen = decomp(chatscreenadr);
+    decomp(&ChatScreen, chatscreenadr);
 }
 
 void initialize_gamescreen(char* gamescreenadr)
 {
-    GameScreen = decomp(gamescreenadr);
+    decomp(&GameScreen, gamescreenadr);
 }
 
 void init_strengthcol()
@@ -535,19 +617,29 @@ void init_palette()
           +(i&0x03)*0x111111;
 }
 
-SDL_Surface* decomp(char* r11)
+void decomp(fastspr_sprite* DecompScreen, char* r11)
 {
-    SDL_Surface* DecompScreen = SDL_CreateRGBSurface(SDL_HWSURFACE, 320, 256, 32,
-                                                     0xff, 0xff00, 0xff0000, 0);
-    static SDL_Rect from;
-    static SDL_Rect to;
-
-    from.x = from.y = to.x = to.y = 0;
-    to.w = ArcScreen->w; to.h = ArcScreen->h;
-    from.w = DecompScreen->w; from.h = DecompScreen->h;
-    SDL_LockSurface(DecompScreen);
-    Uint32* r10 = (Uint32*)DecompScreen->pixels;
-    Uint32* r9 = 0x14000+r10;
+    Uint32* data;
+    Uint32* r10;
+    Uint32* r9;
+    
+    if (vduvar.opengl)
+    {
+	glEnable(GL_TEXTURE_2D);
+	glGenTextures(1, &DecompScreen->t);
+	glBindTexture(GL_TEXTURE_2D, DecompScreen->t);
+	data = (Uint32*)malloc(512*256*sizeof(Uint32));
+	r10 = data;
+	r9 = 512*256 + r10;
+    }
+    else
+    {
+        DecompScreen->s = SDL_CreateRGBSurface(SDL_HWSURFACE, 320, 256, 32,
+					       0xff, 0xff00, 0xff0000, 0);
+        SDL_LockSurface(DecompScreen->s);
+        r10 = (Uint32*)DecompScreen->s->pixels;
+        r9 = 0x14000 + r10;
+    }
 
     r11 += 68;
     while (r9 > r10) // > or >=?
@@ -558,47 +650,105 @@ SDL_Surface* decomp(char* r11)
         {
            sequence:; Uint32 s = palette[0xff&*(r11++)];
             for (int r3 = (r0&0x7f)+2; (r9 > r10) && (r3 != 0); r3--)
+	    {
                loopb6: *(r10++) = s;
+	        if (vduvar.opengl) if (((r10-data)%512) == 320)  r10 += (512-320);
+	    }
         }
         else pattern: for (int r3 = (r0&0x7f)+1; (r9 > r10) && (r3 != 0); r3--)
+	    {
                loopb5: *(r10++) = palette[0xff&*(r11++)];
+	        if (vduvar.opengl) if (((r10-data)%512) == 320)  r10 += (512-320);
+	    }
        decompdone:;
     }
-    SDL_UnlockSurface(DecompScreen);
-    return DecompScreen;
+    DecompScreen->w = vduvar.width;  DecompScreen->h = vduvar.height;
+    DecompScreen->x = 0;  DecompScreen->y = 0;
+    DecompScreen->texw = (vduvar.width*8)/5; DecompScreen->texh = vduvar.height;
+    if (vduvar.opengl)
+    {
+        gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, 512, 256,
+			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)data);
+        free(data);
+    }
+    else
+    {
+	SDL_UnlockSurface(DecompScreen->s);
+    }
 }
 
-void vduread(char fullscreen)
+void vduread(asylum_options options)
 {
+    int viewsize = 8*options.scale;
+    vduvar.xreso = 320*(options.size+1);
+    vduvar.yreso = 256*(options.size+1);
     vduvar.width = 320; vduvar.height = 256;
-    vduvar.gamex = 16; vduvar.gamey = 8;
-    vduvar.gamew = 16*18; vduvar.gameh = 16*12;
-    vduvar.backw = 48; vduvar.backh = 32;
-    vduvar.scorex = (160-(16*7)/2); vduvar.scorey = 220;
-    vduvar.xblocks = 18; vduvar.yblocks = 12;
+    vduvar.gamex = 2*8; vduvar.gamey = 8;
+    vduvar.gamew = 2*18*8; vduvar.gameh = 2*12*8;
+    vduvar.backw = (48*8)/viewsize; vduvar.backh = (32*8)/viewsize;
+    vduvar.scorex = 160-(16*7)/2; vduvar.scorey = 220;
+    vduvar.xblocks = (18*viewsize)/8; vduvar.yblocks = (12*viewsize)/8;
     vduvar.livesx = 44; vduvar.livesy = 234;
     vduvar.strengthx = 108; vduvar.strengthy = 239;
     vduvar.strengthw = (_strengthmax>>8); vduvar.strengthh = 6;
     vduvar.bonusx = 290; vduvar.bonusy = 232; vduvar.bonush = 20;
-    vduvar.sprw = 16; vduvar.sprh = 16;
-    ArcScreen = SDL_SetVideoMode( vduvar.width, vduvar.height, 32 /*bpp*/,
-                                  SDL_HWSURFACE|SDL_DOUBLEBUF|(fullscreen ? SDL_FULLSCREEN : 0));
+    vduvar.sprw = (16*8)/viewsize; vduvar.sprh = (16*8)/viewsize;
+    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 5 );
+    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 5 );
+    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 5 );
+    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 4 );
+    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+    ArcScreen = SDL_SetVideoMode( vduvar.xreso, vduvar.yreso, 24 /*bpp*/,
+                                  (options.opengl ? SDL_OPENGL : 0) |
+				  (options.fullscreen ? SDL_FULLSCREEN : 0));
+    if (ArcScreen == NULL)
+    {
+	printf("Failed to set video mode: %s\n", SDL_GetError());
+	abort_game();
+    }
+    vduvar.opengl = ((ArcScreen->flags & SDL_OPENGL) != 0);
     wipescr = SDL_CreateRGBSurface(SDL_HWSURFACE, 128, 16, 32, 0xff, 0xff00, 0xff0000, 0);
 // backsprite contains four copies of the backdrop tile
     backsprite = SDL_CreateRGBSurface(SDL_HWSURFACE, 2*48, 2*32, 32, 0xff, 0xff00, 0xff0000, 0);
     /* initialise screenstart(149), modesize(7), hbytes(6) */
     init_strengthcol();
     SDL_ShowCursor(SDL_DISABLE);
+    if (vduvar.opengl)
+    {
+        glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(vduvar.width/2,vduvar.height/2,-64,
+		  vduvar.width/2,vduvar.height/2,0,
+		  0,1,0);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glFrustum(vduvar.width/4,-vduvar.width/4,vduvar.height/4,-vduvar.height/4,32,256);
+    }
 }
 
 void backprep(char* backadr)
 {
-    SDL_LockSurface(backsprite);
-    Uint32* ba = (Uint32*)backsprite->pixels;
-    for (int j = 63; j >= 0; j--)
-        for (int i = 95; i >= 0; i--)
-            ba[j*96+i] = palette[backadr[(j%32)*48+(i%48)]];
-    SDL_UnlockSurface(backsprite);
+    if (vduvar.opengl)
+    {
+	Uint32 ba[64*128];
+	for (int j = 63; j >= 0; j--)
+	    for (int i = 127/*95*/; i >= 0; i--)
+		ba[j*128+i] = palette[backadr[(j%32)*48+(i%48)]];
+	glEnable(GL_TEXTURE_2D);
+	glGenTextures(1, batex);
+	glBindTexture(GL_TEXTURE_2D, *batex);
+	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, 2*64, 2*32,
+			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)ba);
+    }
+    else
+    {
+	SDL_LockSurface(backsprite);
+	Uint32* ba = (Uint32*)backsprite->pixels;
+	for (int j = 63; j >= 0; j--)
+	    for (int i = 95; i >= 0; i--)
+		ba[j*96+i] = palette[backadr[(j%32)*48+(i%48)]];
+	SDL_UnlockSurface(backsprite);
+    }
 }
 
 void startmessage()
@@ -623,7 +773,11 @@ void swi_blitz_wait(int d)
 
 void swi_fastspr_clearwindow()
 {
-    SDL_FillRect(ArcScreen, NULL, 0);
+    if (vduvar.opengl)
+    {
+	glRectf(0, 0, vduvar.width, vduvar.height);
+    }
+    else SDL_FillRect(ArcScreen, NULL, 0);
 }
 
 void swi_fastspr_setclipwindow(int x1, int y1, int x2, int y2)
@@ -632,7 +786,26 @@ void swi_fastspr_setclipwindow(int x1, int y1, int x2, int y2)
 
     clip.x = x1; clip.y = y1;
     clip.w = x2-x1; clip.h = y2-y1;
-    SDL_SetClipRect(ArcScreen, &clip);
+    if (vduvar.opengl)
+    {
+	double clipplane0[4] = { 1.0, 0, 0, 0};
+	double clipplane1[4] = {-1.0, 0, 0, 0};
+	double clipplane2[4] = { 0, 1.0, 0, 0};
+	double clipplane3[4] = { 0,-1.0, 0, 0};
+	clipplane0[3] =-x1;
+	clipplane1[3] = x2;
+	clipplane2[3] =-y1;
+	clipplane3[3] = y2;
+	glClipPlane(GL_CLIP_PLANE0, clipplane0);
+	glClipPlane(GL_CLIP_PLANE1, clipplane1);
+	glClipPlane(GL_CLIP_PLANE2, clipplane2);
+	glClipPlane(GL_CLIP_PLANE3, clipplane3);
+	glEnable(GL_CLIP_PLANE0);
+	glEnable(GL_CLIP_PLANE1);
+	glEnable(GL_CLIP_PLANE2);
+	glEnable(GL_CLIP_PLANE3);
+    }
+    else SDL_SetClipRect(ArcScreen, &clip);
 }
 
 void set_player_clip()
@@ -641,6 +814,26 @@ void set_player_clip()
     swi_fastspr_setclipwindow(vduvar.gamex, vduvar.gamey, vduvar.gamex+vduvar.gamew, fsphy);
 }
 
+/*uint32_t maze_neighbours[256] = 
+ { 0, 0, 0, 0, 0x506, 0x40007, 0x4000700, 0x5060000, 0, 0, 0, 0, 0, 0, 0, 0, // teleporters
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // collectables
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // large collectables
+   0, 0, 0, 0, 0, 0, 0x36363636, 0x37373737, // gas
+   0x38383838, 0x39393939, 0x3a3a3a3a, 0x3b3b3b3b, 0x3c3c3c3c, 0x3d3d3d3d, 0x3e3e3e3e, 0x3f3f3f3f, // electricity
+   0, 0, 0, 0, 0x4500, 0x440000, 0, 0, 0x494a, 0x48004b, 0x48004b00, 0x494a0000, 0, 0, 0, 0, // bombs
+   0x8f000000, 0x8e, 0x8d0000, 0x8c00, 0x8f000000, 0x8e, 0x8d0000, 0x8c00, 0x8f000000, 0x8e, 0x8d0000, 0x8c00, 0, 0, 0, 0, // shooters
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // weapons
+   0x7100, 0x700000, 0x72007372, 0x73720073, 0x75, 0x74000000, 0x77, 0x76000000, // pillars
+   0x797a, 0x78007b, 0x78007b7c, 0x797a007d, 0x7a007d00, 0x7b7c0000, 0x7f00, 0x7e0000, // big object
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };*/
+  
 int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, char* end)
 {
     uint32_t* s = (uint32_t*)start;
@@ -662,19 +855,56 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
         uint8_t* pp = (uint8_t*)p;
         int wid = pp[0], hei = pp[1], xcen = pp[2], ycen = pp[3];
         sprites[i].x = xcen; sprites[i].y = ycen;
-        sprites[i].s = SDL_CreateRGBSurface(SDL_HWSURFACE|SDL_SRCALPHA, wid, hei, 32,
-                                            0xff, 0xff00, 0xff0000, 0xff000000);
-        SDL_LockSurface(sprites[i].s);
-        uint32_t* data = (uint32_t*)sprites[i].s->pixels;
-        for (int z = 0; z < wid*hei; z++) data[z] = 0x0;
+	uint32_t* data;
+	if (vduvar.opengl)
+	{
+	    sprites[i].w = wid; sprites[i].h = hei;
+	    sprites[i].texw = 256; sprites[i].texh = 256;
+	    glGenTextures(1, &sprites[i].t);
+	    glBindTexture(GL_TEXTURE_2D, sprites[i].t);
+	    data = (uint32_t*)malloc(256*256*sizeof(uint32_t));
+	    for (int z = 0; z < 256*256; z++) data[z] = 0x0;
+	}
+	else
+	{
+	    sprites[i].s = SDL_CreateRGBSurface(SDL_HWSURFACE|SDL_SRCALPHA, wid, hei, 32,
+						0xff, 0xff00, 0xff0000, 0xff000000);
+	    SDL_LockSurface(sprites[i].s);
+	    data = (uint32_t*)sprites[i].s->pixels;
+	    for (int z = 0; z < wid*hei; z++) data[z] = 0x0;
+	}
         for (uint32_t* q = p+2+hei; q < r; q++)
         {
             int x = ((0x0fffff00&read_littleendian(q))>>8)%320;
             int y = ((0x0fffff00&read_littleendian(q))>>8)/320;
             if ((y*wid+x < 0) || (y*wid+x >= wid*hei)) printf("%i: x=%i y=%i wid=%i hei=%i: bad idea\n", i, x, y, wid, hei);
+            else if (vduvar.opengl) data[(y+1)*256/*wid*/+(x+1)] = palette[0xff&read_littleendian(q)];
             else data[y*wid+x] = palette[0xff&read_littleendian(q)];
         }
-        SDL_UnlockSurface(sprites[i].s);
+	if (vduvar.opengl)
+	{
+	    //uint32_t neighbours = maze_neighbours[i];
+	    for (int y=1; y<=hei; y++)
+	    {
+		data[y*256] = data[y*256+1];
+		data[y*256+wid+1] = data[y*256+wid];
+		/*data[y*256] = alldata[(neighbours&0xff0000)>>16][y*256+wid];
+		  data[y*256+wid+1] = alldata[(neighbours&0xff00)>>8][y*256+1];*/
+	    }
+	    for (int x=0; x<=wid+1; x++)
+	    {
+		data[x] = data[x+256];
+		data[x+hei*256+256] = data[x+hei*256];
+		/*data[x] = alldata[(neighbours&0xff000000)>>24][x+hei*256];
+		  data[x+hei*256+256] = alldata[(neighbours&0xff)][x+256];*/
+	    }
+	    //Without this line I don't get textures unless I use gluBuild2DMipmaps
+	    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST); 
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0,
+			 GL_RGBA, GL_UNSIGNED_BYTE, (char*)data);
+	    free(data);
+	}
+	else SDL_UnlockSurface(sprites[i].s);
     }
     return num_sprites;
 }

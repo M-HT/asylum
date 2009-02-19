@@ -372,9 +372,13 @@ void tunevolume()
 }
 
 
-char speed1[] = "-1. Auto frame rate";
-char speed2[] = "-2. Full Explosions";
-char speed3[] = "-3. Full Screen";
+char speed1[] = "-1. Full Screen";
+char speed2[] = "-2. Use OpenGL";
+char speed3[] = "-4. Half scale";
+char sizedesc[][16] = {" 3.  320 x  256",
+		       " 3.  640 x  512",
+		       " 3.  960 x  768",
+		       " 3. 1280 x 1024"};
 
 void tunespeed()
 {
@@ -386,19 +390,21 @@ void tunespeed()
         {
            tunespeedloop:
             wipetexttab();
-            if (options.gearchange == 1) speed1[0] = 16;
+            if (options.fullscreen == 1) speed1[0] = 16;
             else speed1[0] = 17;
-            if (options.explospeed == 2) speed2[0] = 17;
-            else speed2[0] = 16;
-            if (options.fullscreen == 1) speed3[0] = 16;
+            if (options.opengl == 1) speed2[0] = 16;
+            else speed2[0] = 17;
+            if (options.scale == 2) speed3[0] = 16;
             else speed3[0] = 17;
             message(96, 48, 0, 0, "Tune Video");
             message(32, 96, 0, 0, speed1);
-            message(80, 116, 0, 0, "gearchanging.");
-            message(32, 140, 0, 0, speed2);
-            message(32, 164, 0, 0, speed3);
-//message(40,172,0,0,"Tick Options if you");
-//message(40,192,0,0,"Have a fast machine");
+            message(32, 120, 0, 0, speed2);
+	    if (options.opengl)
+	    {
+		message(32, 144, 0, 0, sizedesc[options.size&3]);
+		message(32, 168, 0, 0, speed3);
+		message(80, 188, 0, 0, "-experimental-");
+	    }
             message(96, 220, 0, 0, "ESC - Exit");
 
             swi_blitz_wait(0);
@@ -406,11 +412,31 @@ void tunespeed()
             showtext();
             int r0 = readopt(3);
             if (r0 == -1) return;
-            else if (r0 == 1) options.gearchange ^= 1;
-            else if (r0 == 2) options.explospeed ^= 3;
+            else if (r0 == 1)
+            {
+                options.fullscreen ^= 1;
+		vduread(options); break;
+            }
+            else if (r0 == 2)
+            {
+                options.opengl ^= 1;
+		if (options.opengl == 0)
+		{
+		    options.size = 1;
+		    options.scale = 1;
+		}
+		vduread(options); break;
+            }
+	    else if (options.opengl == 0);
             else if (r0 == 3)
             {
-                options.fullscreen ^= 1; vduread(options.fullscreen); break;
+                options.size = (options.size+1) % 4;
+		vduread(options); break;
+            }
+            else if (r0 == 4)
+            {
+                options.scale ^= 3;
+		vduread(options); break;
             }
         }
         while (1);

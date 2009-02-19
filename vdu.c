@@ -426,6 +426,7 @@ void plotbonus(char bonusctr, int16_t bonusreplot)
     writeclip(); // reset the clip window
 }
 
+GLuint redtex[1], greytex[1];
 void showstrength(int r3)
 {
    nolager:;
@@ -438,9 +439,43 @@ void showstrength(int r3)
     strengthpart.x = 0; strengthpart.y = framectr&0x1f;
     strengthpart.w = vduvar.strengthw;
     strengthpart.h = vduvar.strengthh;
-    //SDL_BlitSurface(greyness, &strengthpart, ArcScreen, &strengthloc);
+    if (vduvar.opengl)
+    {
+	glBindTexture(GL_TEXTURE_2D, *greytex);
+	glBegin(GL_TRIANGLE_STRIP);
+	glTexCoord2f(0.0, strengthpart.y/64.0);
+	glVertex3f(strengthloc.x, strengthloc.y, 0.0);
+	glTexCoord2f((_strengthmax>>8)/128.0, strengthpart.y/64.0);
+	glVertex3f(strengthloc.x+strengthpart.w, strengthloc.y, 0.0);
+	glTexCoord2f(0.0, (6+strengthpart.y)/64.0);
+	glVertex3f(strengthloc.x, strengthloc.y+strengthpart.h, 0.0);
+	glTexCoord2f((_strengthmax>>8)/128.0, (6+strengthpart.y)/64.0);
+	glVertex3f(strengthloc.x+strengthpart.w, strengthloc.y+strengthpart.h, 0.0);
+	glEnd();
+    }
+    else
+    {
+        SDL_BlitSurface(greyness, &strengthpart, ArcScreen, &strengthloc);
+    }
     strengthpart.w = (vduvar.strengthw*r3)/_strengthmax;
-    //SDL_BlitSurface(redness, &strengthpart, ArcScreen, &strengthloc);
+    if (vduvar.opengl)
+    {
+	glBindTexture(GL_TEXTURE_2D, *redtex);
+	glBegin(GL_TRIANGLE_STRIP);
+	glTexCoord2f(0.0, strengthpart.y/64.0);
+	glVertex3f(strengthloc.x, strengthloc.y, 0.0);
+	glTexCoord2f((strengthpart.w*(_strengthmax>>8))/(vduvar.strengthw*128.0), strengthpart.y/64.0);
+	glVertex3f(strengthloc.x+strengthpart.w, strengthloc.y, 0.0);
+	glTexCoord2f(0.0, (6+strengthpart.y)/64.0);
+	glVertex3f(strengthloc.x, strengthloc.y+strengthpart.h, 0.0);
+	glTexCoord2f((strengthpart.w*(_strengthmax>>8))/(vduvar.strengthw*128.0), (6+strengthpart.y)/64.0);
+	glVertex3f(strengthloc.x+strengthpart.w, strengthloc.y+strengthpart.h, 0.0);
+	glEnd();
+    }
+    else
+    {
+        SDL_BlitSurface(redness, &strengthpart, ArcScreen, &strengthloc);
+    }
     writeclip();
     return;
 }
@@ -453,7 +488,10 @@ void scorewipe()
     scorearea.y = vduvar.scorey-16/2;
     scorearea.w = 128; scorearea.h = 16;
     releaseclip();
-    //SDL_BlitSurface(wipescr, NULL, ArcScreen, &scorearea);
+    if (!vduvar.opengl)
+    {
+        SDL_BlitSurface(wipescr, NULL, ArcScreen, &scorearea);
+    }
     writeclip();
 }
 
@@ -464,7 +502,10 @@ void scorewiperead()
     scorearea.x = vduvar.scorex;
     scorearea.y = vduvar.scorey-16/2;
     scorearea.w = 128; scorearea.h = 16;
-    //SDL_BlitSurface(ArcScreen, &scorearea, wipescr, NULL);
+    if (!vduvar.opengl)
+    {
+	SDL_BlitSurface(ArcScreen, &scorearea, wipescr, NULL);
+    }
 }
 
 void showscore(char plscore[8])
@@ -547,8 +588,8 @@ void showgamescreen()
     releaseclip();
     //SDL_BlitSurface(GameScreen, NULL, ArcScreen, NULL);
     fspplot(&GameScreen, 0, 0, 0);
-    writeclip();
     if (!vduvar.opengl) switchbank();
+    writeclip();
     scorewiperead();
     showlives();
 }
@@ -558,8 +599,9 @@ void showchatscreen()
     releaseclip();
     //SDL_BlitSurface(ChatScreen, NULL, ArcScreen, NULL);
     fspplot(&ChatScreen, 0, 0, 0);
-    writeclip();
     switchbank();
+    if (vduvar.opengl) fspplot(&ChatScreen, 0, 0, 0);
+    writeclip();
 }
 
 void showchatscores()
@@ -582,26 +624,59 @@ void initialize_gamescreen(char* gamescreenadr)
 
 void init_strengthcol()
 {
+    Uint32* redpixels;
+    Uint32* greypixels;
+    int redpitch, greypitch;
     int w = vduvar.strengthw, h = 32+vduvar.strengthh;
 
-    redness = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0xff, 0xff00, 0xff0000, 0);
-    greyness = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0xff, 0xff00, 0xff0000, 0);
-    SDL_LockSurface(redness);
-    SDL_LockSurface(greyness);
+    if (vduvar.opengl)
+    {
+	glEnable(GL_TEXTURE_2D);
+	glGenTextures(1, redtex);
+	glGenTextures(1, greytex);
+	redpixels = (Uint32*)malloc(128*64*sizeof(Uint32));
+	greypixels = (Uint32*)malloc(128*64*sizeof(Uint32));
+	redpitch = greypitch = 128;
+    }
+    else
+    {
+	redness = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0xff, 0xff00, 0xff0000, 0);
+	greyness = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0xff, 0xff00, 0xff0000, 0);
+	SDL_LockSurface(redness);
+	SDL_LockSurface(greyness);
+	redpixels = (Uint32*)redness->pixels;
+	greypixels = (Uint32*)greyness->pixels;
+	redpitch = redness->pitch/4;
+	greypitch = greyness->pitch/4;
+    }
     for (int j = 0; j < 32; j++)
         for (int i = 0; i < w; i++)
         {
-            ((Uint32*)redness->pixels)[j*(redness->pitch/4)+i] = 0xff000000+0x11*(11+(random()%5));  // varying shade of red
-            ((Uint32*)greyness->pixels)[j*(greyness->pitch/4)+i] = 0xff000000+0x111111*(3&random()); // varying shade of dark grey
+            redpixels[j*redpitch+i] = 0xff000000+0x11*(11+(random()%5));  // varying shade of red
+            greypixels[j*greypitch+i] = 0xff000000+0x111111*(3&random()); // varying shade of dark grey
         }
     for (int j = 32; j < 32+vduvar.strengthh; j++)
         for (int i = 0; i < w; i++)
         {
-            ((Uint32*)redness->pixels)[j*(redness->pitch/4)+i] = ((Uint32*)redness->pixels)[(j-32)*(redness->pitch/4)+i];
-            ((Uint32*)greyness->pixels)[j*(greyness->pitch/4)+i] = ((Uint32*)greyness->pixels)[(j-32)*(greyness->pitch/4)+i];
+            redpixels[j*redpitch+i] = redpixels[(j-32)*redpitch+i];
+            greypixels[j*greypitch+i] = greypixels[(j-32)*greypitch+i];
         }
-    SDL_UnlockSurface(greyness);
-    SDL_UnlockSurface(redness);
+    if (vduvar.opengl)
+    {
+	glBindTexture(GL_TEXTURE_2D, *redtex);
+        gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, 128, 64,
+			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)redpixels);
+        free(redpixels);
+	glBindTexture(GL_TEXTURE_2D, *greytex);
+        gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, 128, 64,
+			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)greypixels);
+        free(greypixels);
+    }
+    else
+    {
+	SDL_UnlockSurface(greyness);
+	SDL_UnlockSurface(redness);
+    }
 }
 
 int palette[256];
@@ -775,6 +850,9 @@ void swi_fastspr_clearwindow()
 {
     if (vduvar.opengl)
     {
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_BLEND);
+	glColor4f(0,0,0,1);
 	glRectf(0, 0, vduvar.width, vduvar.height);
     }
     else SDL_FillRect(ArcScreen, NULL, 0);

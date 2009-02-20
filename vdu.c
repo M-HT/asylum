@@ -98,14 +98,14 @@ void fspplotscaled(fastspr_sprite* sprites, char n, float x, float y,
 	glColor4f(1,1,1,1);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBegin(GL_TRIANGLE_STRIP);
-	glTexCoord2f(1.0/sprite.texw, 1.0/sprite.texh);
-	glVertex3f(posx, posy, 0.0);
-	glTexCoord2f((sprite.w+1.0)/sprite.texw, 1.0/sprite.texh);
-	glVertex3f(posx+w, posy, 0.0);
-	glTexCoord2f(1.0/sprite.texh, (sprite.h+1.0)/sprite.texh);
-	glVertex3f(posx, posy+h, 0.0);
-	glTexCoord2f((sprite.w+1.0)/sprite.texw, (sprite.h+1.0)/sprite.texh);
-	glVertex3f(posx+w, posy+h, 0.0);
+	glTexCoord2f(0.5/sprite.texw, 0.5/sprite.texh);
+	glVertex3f(posx-0.5*xs, posy-0.5*ys, 0.0);
+	glTexCoord2f((sprite.w+1.5)/sprite.texw, 0.5/sprite.texh);
+	glVertex3f(posx+w+0.5*xs, posy-0.5*ys, 0.0);
+	glTexCoord2f(0.5/sprite.texh, (sprite.h+1.5)/sprite.texh);
+	glVertex3f(posx-0.5*xs, posy+h+0.5*ys, 0.0);
+	glTexCoord2f((sprite.w+1.5)/sprite.texw, (sprite.h+1.5)/sprite.texh);
+	glVertex3f(posx+w+0.5*xs, posy+h+0.5*ys, 0.0);
 	glEnd();
     }
     else
@@ -703,7 +703,7 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
 	glEnable(GL_TEXTURE_2D);
 	glGenTextures(1, &DecompScreen->t);
 	glBindTexture(GL_TEXTURE_2D, DecompScreen->t);
-	data = (Uint32*)malloc(512*256*sizeof(Uint32));
+	data = (Uint32*)malloc(512*512*sizeof(Uint32));
 	r10 = data;
 	r9 = 512*256 + r10;
     }
@@ -738,16 +738,17 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
        decompdone:;
     }
     DecompScreen->w = vduvar.width;  DecompScreen->h = vduvar.height;
-    DecompScreen->x = 0;  DecompScreen->y = 0;
-    DecompScreen->texw = (vduvar.width*8)/5; DecompScreen->texh = vduvar.height;
+    DecompScreen->texw = (vduvar.width*8)/5; DecompScreen->texh = vduvar.height*2;
     if (vduvar.opengl)
     {
-        gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, 512, 256,
+        DecompScreen->x = -1;  DecompScreen->y = -1;
+        gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, 512, 512,
 			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)data);
         free(data);
     }
     else
     {
+	DecompScreen->x = 0;  DecompScreen->y = 0;
 	SDL_UnlockSurface(DecompScreen->s);
     }
 }
@@ -964,15 +965,15 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
 	    //uint32_t neighbours = maze_neighbours[i];
 	    for (int y=1; y<=hei; y++)
 	    {
-		data[y*256] = data[y*256+1];
-		data[y*256+wid+1] = data[y*256+wid];
+		data[y*256] = data[y*256+1]&0xffffff;
+		data[y*256+wid+1] = data[y*256+wid]&0xffffff;
 		/*data[y*256] = alldata[(neighbours&0xff0000)>>16][y*256+wid];
 		  data[y*256+wid+1] = alldata[(neighbours&0xff00)>>8][y*256+1];*/
 	    }
 	    for (int x=0; x<=wid+1; x++)
 	    {
-		data[x] = data[x+256];
-		data[x+hei*256+256] = data[x+hei*256];
+		data[x] = data[x+256]&0xffffff;
+		data[x+hei*256+256] = data[x+hei*256]&0xffffff;
 		/*data[x] = alldata[(neighbours&0xff000000)>>24][x+hei*256];
 		  data[x+hei*256+256] = alldata[(neighbours&0xff)][x+256];*/
 	    }

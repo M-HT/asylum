@@ -403,6 +403,7 @@ int getfiles();
 void getvitalfiles();
 void getmusicfiles();
 void getgamefiles();
+void getlevelsprites();
 int getlevelfiles();
 int retrievebackdrop();
 int getneuronfiles(int plzone);

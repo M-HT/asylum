@@ -56,6 +56,7 @@ void init()
 // SWI "FastSpr_GetAddress";
 // set up fspplot, fspvars, fspareat=fspvars+24
     setdefaults();
+    loadconfig();
     vduread(options);
     swi_removecursors();
     bank = 1;
@@ -63,9 +64,7 @@ void init()
     switchbank(); //set up bank variables
     checkifarm3();
     if (getfiles()) abort_game();
-    setdefaults();
-    loadconfig();
-    vduread(options); // set screen size from options
+    //vduread(options); // set screen size from options
 
     scorezero();
     cheatpermit = prelude();
@@ -566,10 +565,9 @@ void getgamefiles()
     initialize_sprites(exploadr_load, exploadr, 32, exploadr_load+explolen);
 }
 
-int getlevelfiles()
+void getlevelsprites()
 {
     char *blockadr_load, *alienadr_load;
-    showgamescreen();
     switch (options.mentalzone)
     {
     case 2: currentpath = psychepath; break;
@@ -584,6 +582,19 @@ int getlevelfiles()
    load5:
     int alienlen = loadhammered_level(&alienadr_load, alienpath, currentpath);
     initialize_sprites(alienadr_load, alspradr, 256, alienadr_load+alienlen);
+}
+
+int getlevelfiles()
+{
+    showgamescreen();
+    switch (options.mentalzone)
+    {
+    case 2: currentpath = psychepath; break;
+    case 3: currentpath = idpath; break;
+    case 4: currentpath = psychepath /*XXX*/; break;
+    default: currentpath = egopath;
+    }
+    getlevelsprites();
 
    load6:
     loadhammered_level((char**)&brainadr, boardpath, currentpath);
@@ -645,9 +656,10 @@ int getneuronfiles(int plzone)
     return plzone;
 }
 
-char config_keywords[13][12] =
+char config_keywords[16][12] =
 { "LeftKeysym",    "RightKeysym", "UpKeysym",   "DownKeysym", "FireKeysym",
   "SoundType",   "SoundQ",      "FullScreen",
+  "OpenGL", "ScreenSize", "ScreenScale",
   "SoundVolume", "MusicVolume", "MentalZone", "Initials",   "You" };
 
 char idpermitstring[] = "You are now permitted to play the ID!!!\n";
@@ -664,17 +676,17 @@ void loadconfig()
         while (fscanf(r0, " %12s", keyword) != EOF)
         {
             int i;
-            for (i = 0; i < 13; i++)
+            for (i = 0; i < 16; i++)
                 if (!strncmp(keyword, config_keywords[i], 12)) break;
-            if (i == 11)
+            if (i == 14)
             {
                 fscanf(r0, " %3c", options.initials); continue;
             }
-            if (i == 12)
+            if (i == 15)
             {
                 options.idpermit = 1; break;
             }                       // end of file
-            if (i == 13) break;     // parsing failed
+            if (i == 16) break;     // parsing failed
             int temp;
             fscanf(r0, " %i", &temp);
             switch (i)
@@ -687,9 +699,12 @@ void loadconfig()
             case 5: options.soundtype = temp; break;
                 //case 6: options.soundquality=temp; break;
             case 7: options.fullscreen = temp; break;
-            case 8: options.soundvol = temp; break;
-            case 9: options.musicvol = temp; break;
-            case 10: options.mentalzone = temp; break;
+            case 8: options.opengl = temp; break;
+            case 9: options.size = temp; break;
+            case 10: options.scale = temp; break;
+            case 11: options.soundvol = temp; break;
+            case 12: options.musicvol = temp; break;
+            case 13: options.mentalzone = temp; break;
             }
         }
         fclose(r0);
@@ -706,7 +721,7 @@ void saveconfig()
     if (r0 == NULL) return;
 //swi_osgbpb(1, /* write bytes to pointer R4 */
 //r0,&savestart,&saveend,0);
-    fprintf(r0, "%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %c%c%c\n%s",
+    fprintf(r0, "%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %i\n%s %c%c%c\n%s",
             config_keywords[0], -options.leftkey,
             config_keywords[1], -options.rightkey,
             config_keywords[2], -options.upkey,
@@ -715,10 +730,13 @@ void saveconfig()
             config_keywords[5], options.soundtype,
             //config_keywords[6], options.soundquality,
             config_keywords[7], options.fullscreen,
-            config_keywords[8], options.soundvol,
-            config_keywords[9], options.musicvol,
-            config_keywords[10], options.mentalzone,
-            config_keywords[11], options.initials[0],
+            config_keywords[8], options.opengl,
+            config_keywords[9], options.size,
+            config_keywords[10], options.scale,
+            config_keywords[11], options.soundvol,
+            config_keywords[12], options.musicvol,
+            config_keywords[13], options.mentalzone,
+            config_keywords[14], options.initials[0],
 	                         options.initials[1],
 	                         options.initials[2],
             ((options.idpermit == 1) ? idpermitstring : ""));

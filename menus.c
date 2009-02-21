@@ -410,7 +410,7 @@ void tunespeed()
             swi_blitz_wait(0);
             swi_fastspr_clearwindow();
             showtext();
-            int r0 = readopt(3);
+            int r0 = readopt(4);
             if (r0 == -1) return;
             else if (r0 == 1)
             {
@@ -422,16 +422,24 @@ void tunespeed()
                 options.opengl ^= 1;
 		if (options.opengl == 0)
 		{
-		    options.size = 1;
+		    options.size = 0;
 		    options.scale = 1;
 		}
-		vduread(options); break;
+		vduread(options);
+		getvitalfiles();
+		getgamefiles();
+		getlevelsprites();
+		break;
             }
 	    else if (options.opengl == 0);
             else if (r0 == 3)
             {
                 options.size = (options.size+1) % 4;
-		vduread(options); break;
+		vduread(options);
+		getvitalfiles();
+		getgamefiles();
+		getlevelsprites();
+		break;
             }
             else if (r0 == 4)
             {

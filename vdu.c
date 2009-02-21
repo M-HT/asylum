@@ -92,6 +92,7 @@ void fspplotscaled(fastspr_sprite* sprites, char n, float x, float y,
     if (vduvar.opengl)
     {
 	// This rescales as requested ...
+	if ((sprite.w==0) || (sprite.h==0)) return;
 	glBindTexture(GL_TEXTURE_2D, sprite.t);
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
@@ -791,6 +792,7 @@ void vduread(asylum_options options)
     SDL_ShowCursor(SDL_DISABLE);
     if (vduvar.opengl)
     {
+        glViewport(0,0,vduvar.xreso,vduvar.yreso);
         glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	gluLookAt(vduvar.width/2,vduvar.height/2,-64,

@@ -497,7 +497,14 @@ int readopt(int maxopt)
             return -1;
         }
         if (r1 == 0) continue;
-        if (osbyte_81(options.firekey) == 0xff) optfire: return 0;r1 -= 48; // '1' key returns value 49
+        if (osbyte_81(options.firekey) == 0xff)
+            return 0;
+        if (r1 >= SDLK_0 && r1 <= SDLK_9)
+            r1 -= SDLK_0;
+        else if (r1 >= SDLK_KP0 && r1 <= SDLK_KP9)
+            r1 -= SDLK_KP0;
+        else
+            continue;
     }
     while (!((r1 >= 0) && (r1 <= maxopt)));
    optexit:

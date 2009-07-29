@@ -666,11 +666,11 @@ void init_strengthcol()
     {
 	glBindTexture(GL_TEXTURE_2D, *redtex);
         gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, 128, 64,
-			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)redpixels);
+			  GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (char*)redpixels);
         free(redpixels);
 	glBindTexture(GL_TEXTURE_2D, *greytex);
         gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, 128, 64,
-			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)greypixels);
+			  GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (char*)greypixels);
         free(greypixels);
     }
     else
@@ -744,7 +744,7 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
     {
         DecompScreen->x = -1;  DecompScreen->y = -1;
         gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, 512, 512,
-			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)data);
+			  GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (char*)data);
         free(data);
     }
     else
@@ -816,7 +816,7 @@ void backprep(char* backadr)
 	glGenTextures(1, batex);
 	glBindTexture(GL_TEXTURE_2D, *batex);
 	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, 2*64, 2*32,
-			  GL_RGBA, GL_UNSIGNED_BYTE, (char*)ba);
+			  GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (char*)ba);
     }
     else
     {
@@ -982,7 +982,7 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
 	    //Without this line I don't get textures unless I use gluBuild2DMipmaps
 	    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST); 
 	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0,
-			 GL_RGBA, GL_UNSIGNED_BYTE, (char*)data);
+			 GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (char*)data);
 	    free(data);
 	}
 	else SDL_UnlockSurface(sprites[i].s);

@@ -495,6 +495,7 @@ void swi_stasis_control(int a, int b);
 void swi_stasis_volslide(int a, int b, int c);
 void swi_removecursors();
 int osbyte_79(int c);
+int osbyte_79_unicode(int c);
 int osbyte_7a();
 void osbyte_7c();
 int osbyte_81(int c);

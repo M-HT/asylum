@@ -19,9 +19,10 @@
 
 extern asylum_options options;
 
-char keyboard[512];
-int keybuf;
-int mouse;
+static char keyboard[512];
+static int keybuf;
+static int unibuf;
+static int mouse;
 
 #define ESC_VALUE 27
 
@@ -52,6 +53,14 @@ int osbyte_79(int c)
     return key;
     //for (int i=0;i<512;i++) if (keyboard[i]) {/*printf("Returning %i\n",i);*/ return i;}
     return -1;
+}
+
+int osbyte_79_unicode(int c)
+{
+    update_keyboard();
+    int uni = unibuf;
+    unibuf = -1;
+    return uni;
 }
 
 int osbyte_7a()
@@ -96,6 +105,10 @@ void update_keyboard()
             ke = (SDL_KeyboardEvent*)&e;
             keyboard[ke->keysym.sym] = 0xff;
             keybuf = ke->keysym.sym;
+            if (ke->keysym.unicode)
+                unibuf = ke->keysym.unicode;
+            else
+                unibuf = -1;
             break;
         case SDL_KEYUP:
             ke = (SDL_KeyboardEvent*)&e;
@@ -128,7 +141,7 @@ void update_keyboard()
 
 void zonecheatread(int* zone)
 {
-    char r1 = osbyte_7a(); // was _81(0)
+    char r1 = osbyte_79_unicode(0); // was _81(0)
 
     if ((r1 < 48) || (r1 > 56)) return;
     *zone = r1-48;

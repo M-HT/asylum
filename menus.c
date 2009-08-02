@@ -54,18 +54,17 @@ int escapehandler()
             swi_fastspr_clearwindow();
             texthandler();
         }
-       esctextstop:
-        if (osbyte_81(-113))
+        switch (osbyte_79_unicode(1))
         {
-            loselife(); return 0;
-        }
-        if (osbyte_81(-111))
-        {
-            adjustopt(); return 0;
-        }
-        if (osbyte_81(-114))
-        {
-            rejoin(); return 0;
+            case 'q': case 'Q':
+                loselife();
+                return 0;
+            case 'o': case 'O':
+                adjustopt();
+                return 0;
+            case 'r': case 'R':
+                rejoin();
+                return 0;
         }
     }
     osbyte_7c();
@@ -478,7 +477,7 @@ int readopt(int maxopt)
 {
     int r1;
 
-    do
+    for (;;)
     {
        keyloop:
         if (options.joyno != 0)
@@ -488,27 +487,18 @@ int readopt(int maxopt)
 //if (r0&(1<<16)) {/*optfire:*/ return 0;}
         }
        nooptstick:
-        r1 = osbyte_81(1); // read key in time limit
-// if (r1!=0xff) printf("%i\n",r1);
+        r1 = osbyte_79_unicode(1); // read key in time limit
         if (swi_readescapestate())
         {
            optescape:
             osbyte_7c(); // clear escape
             return -1;
         }
-        if (r1 == 0) continue;
+        if (r1 >= '0' && r1 <= '0' + maxopt)
+            return r1 - '0';
         if (osbyte_81(options.firekey) == 0xff)
             return 0;
-        if (r1 >= SDLK_0 && r1 <= SDLK_9)
-            r1 -= SDLK_0;
-        else if (r1 >= SDLK_KP0 && r1 <= SDLK_KP9)
-            r1 -= SDLK_KP0;
-        else
-            continue;
     }
-    while (!((r1 >= 0) && (r1 <= maxopt)));
-   optexit:
-    return r1;
 }
 
 const int _x = 250;
@@ -559,8 +549,8 @@ int prelude()
         if (readmousestate()&2)
         {
            gocheat:
-            if (osbyte_81(-307) != 0xff) return cheatpermit;
-            if (osbyte_81(-308) != 0xff) return cheatpermit;
+            if (osbyte_81(-SDLK_LALT) != 0xff) return cheatpermit;
+            if (osbyte_81(-SDLK_RALT) != 0xff && osbyte_81(-SDLK_MODE) != 0xff) return cheatpermit;
             cheatpermit = 1;
             scroll = 1024;
         }

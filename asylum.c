@@ -480,6 +480,7 @@ int main(int argc, char** argv)
 
     SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
     SDL_WM_SetCaption("Asylum", "Asylum");
+    SDL_EnableUNICODE(1);
 #ifndef _NO_SOUND
     init_audio();
 #endif

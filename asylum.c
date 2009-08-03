@@ -173,7 +173,7 @@ int game()
                 bonusplot();
                 scoreadd();
                 update_show_strength();
-                texthandler();
+                texthandler(1);
                 seeifdead();
 //makesounds();
                 wakeupal(xpos, ypos);
@@ -217,7 +217,7 @@ int game()
 
 void showtext()
 {
-    texthandler();
+    texthandler(0);
     switchbank();
 }
 
@@ -426,7 +426,6 @@ void setup()
     initweapon();
     initprojtab();
     initbultab();
-    setfullclip();
     initrockettab();
     getvars();
     prepstrength();
@@ -523,7 +522,6 @@ char deathmusicpath[] = "./Resources/Music2";
 int getfiles()
 {
     getvitalfiles();
-    setfullclip();
     showloading();
     init_sounds();
     getmusicfiles();

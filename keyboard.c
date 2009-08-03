@@ -23,6 +23,7 @@ static char keyboard[512];
 static int keybuf;
 static int unibuf;
 static int mouse;
+static int exposed;
 
 #define ESC_VALUE 27
 
@@ -132,6 +133,9 @@ void update_keyboard()
             case SDL_BUTTON_RIGHT: mouse &= ~1; break;
             }
             break;
+        case SDL_VIDEOEXPOSE:
+            exposed = 1;
+            break;
         case SDL_QUIT:
             exithandler();
             break;
@@ -213,3 +217,9 @@ void keyread(key_state* ks)
         ks->keypressed = 1;
 }
 
+int need_redraw()
+{
+    int e = exposed;
+    exposed = 0;
+    return e;
+}

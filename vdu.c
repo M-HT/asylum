@@ -261,24 +261,27 @@ void wipetexttab()
         *(r10++) = 0;
 }
 
-void texthandler()
+void texthandler(int do_animation)
 {
     textinfo* r11 = texttabofs;
     int r9 = _textno;
 
     for (; r9 > 0; r11++, r9--)
     {
-       loopa6: if (r11->count == 0) continue;
-       textproc:;
-        int r4 = (frameinc > 4) ? 4 : frameinc;
-        r11->count -= r4; if (r11->count < 0) r11->count = 0;
+        if (r11->count == 0) continue;
 
-        for (; r4 > 0; r4--)
+        if (do_animation)
         {
-           loopb1:
-            r11->x += r11->dx;
-            r11->y += r11->dy;
+            int r4 = (frameinc > 4) ? 4 : frameinc;
+            r11->count -= r4; if (r11->count < 0) r11->count = 0;
+
+            for (; r4 > 0; r4--)
+            {
+                r11->x += r11->dx;
+                r11->y += r11->dy;
+            }
         }
+
         int XxX = r11->x>>8;
         int YyY = r11->y>>8;
         for (char* r10 = r11->text; *r10 != 0; r10++)
@@ -542,14 +545,6 @@ void showscore(char plscore[8])
     }
 }
 
-void setfullclip()
-{
-    clip.x = vduvar.gamex; clip.y = vduvar.gamey;
-    clip.w = vduvar.gamew;
-    clip.h = vduvar.gameh;
-    writeclip();
-}
-
 void writeclip()
 {
     swi_fastspr_setclipwindow(clip.x, clip.y, clip.x+clip.w, clip.y+clip.h);
@@ -589,8 +584,16 @@ void showgamescreen()
     releaseclip();
     //SDL_BlitSurface(GameScreen, NULL, ArcScreen, NULL);
     fspplot(&GameScreen, 0, 0, 0);
+    #if 0
     if (!vduvar.opengl) switchbank();
+    #endif
+
+    clip.x = vduvar.gamex;
+    clip.y = vduvar.gamey;
+    clip.w = vduvar.gamew;
+    clip.h = vduvar.gameh;
     writeclip();
+
     scorewiperead();
     showlives();
 }
@@ -600,8 +603,15 @@ void showchatscreen()
     releaseclip();
     //SDL_BlitSurface(ChatScreen, NULL, ArcScreen, NULL);
     fspplot(&ChatScreen, 0, 0, 0);
+    #if 0
     switchbank();
     if (vduvar.opengl) fspplot(&ChatScreen, 0, 0, 0);
+    #endif
+
+    clip.x = 20;
+    clip.y = 20;
+    clip.w = 319 - 20*2;
+    clip.h = 255 - 20*2;
     writeclip();
 }
 

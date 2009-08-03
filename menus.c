@@ -32,7 +32,6 @@ int escapehandler()
 {
     //frameinc = 1;
     showchatscreen();
-    swi_fastspr_setclipwindow(20, 20, 319-20, 255-20);
     swi_fastspr_clearwindow();
     wipetexttab();
     message(36, 40-256, 0, 4, "¤ Game Interrupted ¤");
@@ -52,7 +51,12 @@ int escapehandler()
             r9--;
             switchbank();
             swi_fastspr_clearwindow();
-            texthandler();
+            texthandler(1);
+        }
+        else if (need_redraw())
+        {
+            showchatscreen();
+            showtext();
         }
         switch (osbyte_79_unicode(1))
         {
@@ -90,7 +94,6 @@ int options_menu(int gameon)
         clearkeybuf();
         wipetexttab();
         showchatscreen();
-        swi_fastspr_setclipwindow(20, 20, 319-20, 255-20);
         swi_fastspr_clearwindow();
         message(128, 48, 0, 0, "Options");
         message(32, 96, 0, 0, "1. Define Controls");
@@ -266,7 +269,6 @@ char sound7[] = "-7. Overdrive";
 void tunesound()
 {
     showchatscreen();
-    swi_fastspr_setclipwindow(20, 20, 319-20, 255-20);
     for (;; /*tunesoundloop:*/ soundupdate(), swi_stasis_link(1, 1), swi_sound_control(1, -15, 0x20, 0xfe))
     {
        tunesoundins:
@@ -319,7 +321,6 @@ void tunevolume()
     wipetexttab();
     if (sound_available && (options.soundtype == 2)) swi_bodgemusic_start(1, 0);
     swi_bodgemusic_volume(options.musicvol);
-    swi_fastspr_setclipwindow(20, 20, 319-20, 255-20);
     message(80, 32, 0, 0, "Change volume");
     message(48, 96, 0, 0, "1. Louder effects");
     message(48, 116, 0, 0, "2. Quieter effects");
@@ -384,7 +385,6 @@ void tunespeed()
     do
     {
         showchatscreen();
-        swi_fastspr_setclipwindow(20, 20, 319-20, 255-20);
         do
         {
            tunespeedloop:
@@ -462,11 +462,12 @@ int selectkey(int x, int y, int xv, int yv, const char* a)
     showtext();
     do
     {
-        //do choosekeyloop:; // read key
-        //while (osbyte_79(0)!=0xff); //no key pressed
-        //if ((r4=osbyte_81(1))==ESC_VALUE) // read key
-        //{ chooseescape: osbyte_7c();
-        //return 0;} //early exit
+        if (need_redraw())
+        {
+            showchatscreen();
+            showtext();
+        }
+        swi_blitz_wait(1);
     }
     while ((r1 = osbyte_79(0)) == -1); // scan keyboard
     if (swi_readescapestate()) return 0;
@@ -498,6 +499,12 @@ int readopt(int maxopt)
             return r1 - '0';
         if (osbyte_81(options.firekey) == 0xff)
             return 0;
+        if (need_redraw())
+        {
+            showchatscreen();
+            showtext();
+        }
+        swi_blitz_wait(1);
     }
 }
 
@@ -508,9 +515,7 @@ int prelude()
 {
     int cheatpermit = 0;
     //frameinc = 1;
-    setfullclip();
     showchatscreen();
-    swi_fastspr_setclipwindow(20, 20, 319-20, 255-20);
     swi_fastspr_clearwindow();
     wipetexttab();
     message(2048, _x, 0, _v, "Digital Psychosis");
@@ -539,7 +544,12 @@ int prelude()
             scroll--;
             switchbank();
             swi_fastspr_clearwindow();
-            texthandler();
+            texthandler(1);
+        }
+        else if (need_redraw())
+        {
+            showchatscreen();
+            showtext();
         }
        preludetextstop:;
         int r1 = osbyte_7a();
@@ -630,7 +640,6 @@ void showerror()
 {
     //frameinc = 1;
     showchatscreen();
-    swi_fastspr_setclipwindow(20, 20, 319-20, 255-20);
     swi_fastspr_clearwindow();
     wipetexttab();
     message(72, 200, 0, 0, "RET - Try Again");
@@ -641,7 +650,6 @@ void showerrorok()
 {
     //frameinc = 1;
     showchatscreen();
-    swi_fastspr_setclipwindow(20, 20, 319-20, 255-20);
     swi_fastspr_clearwindow();
     wipetexttab();
     message(72, 200, 0, 0, "RET - OK");
@@ -682,7 +690,6 @@ int showhighscore()
     loadscores(highscorearea, options.mentalzone);
     updatehst();
     showhst();
-    wipetexttab();
     message(96, 224, 0, 0, "press fire");
     releaseclip();
     showtext();
@@ -781,20 +788,20 @@ void showhst()
     showchatscores();
     wipetexttab();
     message(64, 32, 0, 0, "Zone High Scores");
-    texthandler();
-    char* r10 = highscorearea;
-    int x = 32, y = 64;
-    for (int r3 = 5; r3 > 0; r3--)
+
+    int x = 32, y = 64, i, j;
+    char * ptr = highscorearea;
+    for (i = 0; i < 5; ++i)
     {
-        for (; *r10 > 0xa; r10++)
-        {
-           showhstloop:
-            if (*r10 != ' ') fspplot(charsadr, *r10-'0', x, y);
-            x += 16;
-        }
-       showhstnewline:
-        x = 32; y += 32; r10++;
+        char line[13];
+        for (j = 0; j < 12 && *ptr > 0xa; ++j, ++ptr)
+            line[j] = *ptr;
+        line[j] = 0;
+        message(x, y, 0, 0, line);
+        y += 32;
+        ++ptr; /*skip over newline*/
     }
-    if (hstindex == 5) return;
-    fspplot(charsadr, 13, 280, (hstindex+2)<<5);
+    if (hstindex < 5)
+        message(280, (hstindex+2)<<5, 0, 0, "=");
+    texthandler(0);
 }

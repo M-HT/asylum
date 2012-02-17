@@ -51,7 +51,9 @@ int escapehandler()
             r9--;
             switchbank();
             swi_fastspr_clearwindow();
+#if (DISPLAY_HWDOUBLEBUF)
             showchatscreen();
+#endif
             texthandler(1);
         }
         else if (need_redraw())
@@ -239,10 +241,18 @@ void tunegame()
         message(115, 101, 0, 0, "Sound Not");
         message(112, 123, 0, 0, "Available");
     }
+#ifndef DISABLE_OPENGL
     message(64, 160, 0, 0, "3. Video System");
+#endif
     showtext();
     while (1)
-        switch (readopt(3))
+        switch (readopt(
+#ifndef DISABLE_OPENGL
+        3
+#else
+        2
+#endif
+        ))
         {
         case-1: return;
         case  1: if (sound_available)
@@ -255,7 +265,9 @@ void tunegame()
                 tunevolume(); return;
             }
             else break;
+#ifndef DISABLE_OPENGL
         case  3: tunespeed(); return;
+#endif
         }
 }
 
@@ -392,19 +404,24 @@ void tunespeed()
             wipetexttab();
             if (options.fullscreen == 1) speed1[0] = 16;
             else speed1[0] = 17;
+#ifndef DISABLE_OPENGL
             if (options.opengl == 1) speed2[0] = 16;
-            else speed2[0] = 17;
+            else
+#endif
+            speed2[0] = 17;
             if (options.scale == 2) speed3[0] = 16;
             else speed3[0] = 17;
             message(96, 48, 0, 0, "Tune Video");
             message(32, 96, 0, 0, speed1);
             message(32, 120, 0, 0, speed2);
+#ifndef DISABLE_OPENGL
 	    if (options.opengl)
 	    {
 		message(32, 144, 0, 0, sizedesc[options.size&3]);
 		message(32, 168, 0, 0, speed3);
 		message(80, 188, 0, 0, "-experimental-");
 	    }
+#endif
             message(96, 220, 0, 0, "ESC - Exit");
 
             swi_blitz_wait(0);
@@ -419,8 +436,10 @@ void tunespeed()
             }
             else if (r0 == 2)
             {
+#ifndef DISABLE_OPENGL
                 options.opengl ^= 1;
 		if (options.opengl == 0)
+#endif
 		{
 		    options.size = 0;
 		    options.scale = 1;
@@ -431,7 +450,9 @@ void tunespeed()
 		getlevelsprites();
 		break;
             }
+#ifndef DISABLE_OPENGL
 	    else if (options.opengl == 0);
+#endif
             else if (r0 == 3)
             {
                 options.size = (options.size+1) % 4;

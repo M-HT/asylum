@@ -262,8 +262,12 @@ void setdefaults()
     options.gearchange = (arm3 == 0) ? 0 : 1;
     options.explospeed = (arm3 == 0) ? 2 : 1;
     options.fullscreen = 0;
+#ifndef DISABLE_OPENGL
     options.opengl = 1;
     options.size = 1; // 640 x 512
+#else
+    options.size = 0; // 320 x 256
+#endif
     options.scale = 1;
     options.joyno = 0;
     options.mentalzone = 1;
@@ -704,9 +708,11 @@ void loadconfig()
             case 5: options.soundtype = temp; break;
                 //case 6: options.soundquality=temp; break;
             case 7: options.fullscreen = temp; break;
+#ifndef DISABLE_OPENGL
             case 8: options.opengl = temp; break;
             case 9: options.size = temp; break;
             case 10: options.scale = temp; break;
+#endif
             case 11: options.soundvol = temp; break;
             case 12: options.musicvol = temp; break;
             case 13: options.mentalzone = temp; break;
@@ -735,9 +741,24 @@ void saveconfig()
             config_keywords[5], options.soundtype,
             //config_keywords[6], options.soundquality,
             config_keywords[7], options.fullscreen,
-            config_keywords[8], options.opengl,
-            config_keywords[9], options.size,
-            config_keywords[10], options.scale,
+            config_keywords[8],
+#ifndef DISABLE_OPENGL
+            options.opengl,
+#else
+            0,
+#endif
+            config_keywords[9],
+#ifndef DISABLE_OPENGL
+            options.size,
+#else
+            0,
+#endif
+            config_keywords[10],
+#ifndef DISABLE_OPENGL
+            options.scale,
+#else
+            1,
+#endif
             config_keywords[11], options.soundvol,
             config_keywords[12], options.musicvol,
             config_keywords[13], options.mentalzone,

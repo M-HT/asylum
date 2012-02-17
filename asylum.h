@@ -15,10 +15,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
+#include "platform.h"
+
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
+#ifndef DISABLE_OPENGL
 #include <GL/gl.h>
 #include <GL/glu.h>
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -88,8 +92,11 @@
 
 const int fullpitch = 0x2155;
 
-typedef struct fastspr_sprite { int x; int y; int w; int h; GLuint t;
-                                int texw; int texh; SDL_Surface* s; } fastspr_sprite;
+typedef struct fastspr_sprite { int x; int y; int w; int h;
+#ifndef DISABLE_OPENGL
+                                GLuint t; int texw; int texh;
+#endif
+                                SDL_Surface* s; } fastspr_sprite;
 
 typedef struct board { int first_int; int width; int height;
                        int fourth; int fifth; int sixth; int seventh; int eighth;
@@ -124,7 +131,11 @@ typedef struct bulent
 typedef struct asylum_options
 {
     char soundtype, soundquality, explospeed, gearchange;
-    char fullscreen, opengl, size, scale, mentalzone;
+    char fullscreen;
+#ifndef DISABLE_OPENGL
+    char opengl;
+#endif
+    char size, scale, mentalzone;
     int leftkey, rightkey, upkey, downkey, firekey;
     char soundvol, musicvol, joyno;
     char idpermit;

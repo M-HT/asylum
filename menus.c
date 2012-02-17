@@ -51,6 +51,7 @@ int escapehandler()
             r9--;
             switchbank();
             swi_fastspr_clearwindow();
+            showchatscreen();
             texthandler(1);
         }
         else if (need_redraw())

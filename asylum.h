@@ -456,7 +456,7 @@ void getvars();
 void init_palette();
 void vduread(asylum_options);
 int main(int argc, char** argv);
-void load_voices();
+void load_voices(int dumpmusic);
 void init_sounds();
 void init_keyboard();
 void message_scroll(const char* a);

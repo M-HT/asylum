@@ -250,9 +250,9 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
     }
 }
 
-void load_voices()
+void load_voices(int dumpmusic)
 {
-    if (!sound_available) return;
+    if (!sound_available && !dumpmusic) return;
     load_voice(1, "./Voices/Jump");
     load_voice(2, "./Voices/Bonus");
     load_voice(3, "./Voices/Explo");

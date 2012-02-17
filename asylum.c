@@ -91,7 +91,7 @@ void init()
         {
            zonedone:
             if (options.idpermit != 1) permitid();
-            swi_bodgemusic_start(1, 0); // ?? (3,0) in original
+            if (options.soundtype == 2) swi_bodgemusic_start(1, 0); // ?? (3,0) in original
         }
         else                            // was "else if overflow clear"
         {
@@ -200,7 +200,7 @@ int game()
 		   case 1:
                     goto zonerestart;
 		   case 2:
-		    return 0;  
+		    return 0;
 		   case 0:
 		    ;
                 }
@@ -347,7 +347,13 @@ void checkifarm3()
 
 int checkifextend()
 {
-    return (NULL != find_game(0x40));
+    int ret;
+    FILE *f;
+
+    f = find_game(0x40);
+    ret = (NULL != f);
+    if (ret) fclose(f);
+    return ret;
 }
 
 
@@ -381,7 +387,7 @@ void loadzone()
 
 void change_zone(int zone)
 {
-    plzone = zone; 
+    plzone = zone;
 }
 
 void enterneuron(int r1)
@@ -458,7 +464,7 @@ void c_array_initializers()
 {
     init_projsplittab(); init_rocketbursttab(); init_alspintab(); init_rockettab();
     init_palette(); init_splittab();
-    load_voices();
+    load_voices(0);
     init_keyboard();
 }
 
@@ -468,12 +474,12 @@ int main(int argc, char** argv)
 
     if ((argc > 2) && !strcmp(argv[1], "--dumpmusic"))
     {
-	dropprivs();
-        load_voices();
+        dropprivs();
+        load_voices(1);
         dumpmusic(argc,argv);
         exit(0);
     }
-    
+
     open_scores();
     dropprivs();
 
@@ -525,7 +531,7 @@ int getfiles()
     showloading();
     init_sounds();
     getmusicfiles();
-    swi_bodgemusic_start(1, 0);
+    if (options.soundtype == 2) swi_bodgemusic_start(1, 0);
     getgamefiles();
     return 0;
 }

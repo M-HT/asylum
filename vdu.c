@@ -377,7 +377,7 @@ void backdrop(int xpos, int ypos)
    modpos:
     back_to_blit.x = ((48-r2)*vduvar.backw)/48; back_to_blit.y = (r4*vduvar.backh)/32;
     back_to_blit.w = vduvar.backw; back_to_blit.h = vduvar.backh;
-    
+
     if (vduvar.opengl)
     {
 	float btbx = 0.375*(48-float_r2)/48.0; float btby = 0.5*float_r4/32.0;
@@ -386,7 +386,7 @@ void backdrop(int xpos, int ypos)
 	//glColor4f(1,1,1,1);
 	for (loc_to_blit.y = vduvar.gamey; loc_to_blit.y < vduvar.gamey+vduvar.gameh; loc_to_blit.y += vduvar.backh)
 	    for (loc_to_blit.x = vduvar.gamex; loc_to_blit.x < vduvar.gamex+vduvar.gamew; loc_to_blit.x += vduvar.backw)
-	    {	
+	    {
 		glBegin(GL_TRIANGLE_STRIP);
 		glTexCoord2f(btbx+0.0, btby+0.0);
 		glVertex3f(loc_to_blit.x, loc_to_blit.y, 0.0);
@@ -708,7 +708,7 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
     Uint32* data;
     Uint32* r10;
     Uint32* r9;
-    
+
     if (vduvar.opengl)
     {
 	glEnable(GL_TEXTURE_2D);
@@ -905,7 +905,7 @@ void set_player_clip()
     swi_fastspr_setclipwindow(vduvar.gamex, vduvar.gamey, vduvar.gamex+vduvar.gamew, fsphy);
 }
 
-/*uint32_t maze_neighbours[256] = 
+/*uint32_t maze_neighbours[256] =
  { 0, 0, 0, 0, 0x506, 0x40007, 0x4000700, 0x5060000, 0, 0, 0, 0, 0, 0, 0, 0, // teleporters
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // collectables
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // large collectables
@@ -924,7 +924,7 @@ void set_player_clip()
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };*/
-  
+
 int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, char* end)
 {
     uint32_t* s = (uint32_t*)start;
@@ -958,6 +958,10 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
 	}
 	else
 	{
+        if (sprites[i].s != NULL)
+        {
+            SDL_FreeSurface(sprites[i].s);
+        }
 	    sprites[i].s = SDL_CreateRGBSurface(SDL_HWSURFACE|SDL_SRCALPHA, wid, hei, 32,
 						0xff, 0xff00, 0xff0000, 0xff000000);
 	    SDL_LockSurface(sprites[i].s);
@@ -990,7 +994,7 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
 		  data[x+hei*256+256] = alldata[(neighbours&0xff)][x+256];*/
 	    }
 	    //Without this line I don't get textures unless I use gluBuild2DMipmaps
-	    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST); 
+	    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0,
 			 GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (char*)data);
 	    free(data);

@@ -100,6 +100,33 @@ Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, ch
     mc->alen = numsamples*2*sizeof(Uint16);
     mc->allocated = 0; // don't automatically free buffer
     mc->volume = 0xff; // XXX volume
+
+    // try reading file from soundcache
+    {
+        FILE *f;
+        char name[256];
+        uint16_t *pstereo, *pmono;
+
+        sprintf(name, "soundcache/%02x-%x-%x-%x-%02x.mono", samp, initpitch, volslide, pitchslide, frames);
+        f = fopen(name, "rb");
+        if (f != NULL)
+        {
+            pstereo = (uint16_t *)(mc->abuf);
+            pmono = pstereo + (mc->alen / 4);
+            if (fread(pmono, 1, mc->alen / 2, f) == (mc->alen / 2))
+            {
+                fclose(f);
+
+                for (int i = 0; i < mc->alen / 4; i++) {
+                    pstereo[2*i] = pstereo[2*i + 1] = pmono[i];
+                }
+
+                return mc;
+            }
+            fclose(f);
+        }
+    }
+
     int time = 0;
     double ps = ((Sint16)(pitchslide&0xffff))*22/22050.0;
     double vs = ((Sint16)(volslide&0xffff))/22050.0;
@@ -137,6 +164,27 @@ Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, ch
         }
         s[1] = *s = mono; // XXX stereo
     }
+    // write file to soundcache
+    /*{
+        FILE *f;
+        char name[256];
+        uint16_t *pstereo, *pmono;
+
+        pstereo = (uint16_t *)(mc->abuf);
+        pmono = (uint16_t *)malloc(mc->alen / 2);
+        for (int i = 0; i < mc->alen / 4; i++) {
+            pmono[i] = pstereo[2*i];
+        }
+
+        sprintf(name, "soundcache/%02x-%x-%x-%x-%02x.mono", samp, initpitch, volslide, pitchslide, frames);
+        f = fopen(name, "wb");
+        if (f != NULL)
+        {
+            fwrite(pmono, 1, mc->alen / 2, f);
+            fclose(f);
+        }
+        free(pmono);
+    }*/
     return mc;
 }
 

@@ -177,10 +177,20 @@ void choosecontrol()
     wipetexttab();
     showchatscreen();
     message(96, 48, 0, 0, "Controls");
+#if defined(PANDORA)
+    message(64, 96, 0, 0, "1. Set Keys");
+#else
     message(64, 96, 0, 0, "1. Keyboard");
     message(64, 128, 0, 0, "2. Joystick");
+#endif
     showtext();
-    switch (readopt(2))
+    switch (readopt(
+#if defined(PANDORA)
+        1
+#else
+        2
+#endif
+    ))
     {
     case-1: return;
     case  1: choosekeys(); return;
@@ -271,9 +281,15 @@ void tunegame()
         }
 }
 
+#if defined(PANDORA)
+char sound1[] = "-1. No Sound";
+char sound2[] = "-2. Sound";
+char sound3[] = "-3. Sound";
+#else
 char sound1[] = "-1. No Sound";
 char sound2[] = "-2. 4 Channels";
 char sound3[] = "-3. 4 Channels";
+#endif
 char sound4[] = "-4. 8 Channels";
 char sound5[] = "-5. Normal Quality";
 char sound6[] = "-6. High Quality";
@@ -292,16 +308,24 @@ void tunesound()
         message(32, 80, 0, 0, sound2);
         message(32, 100, 0, 0, sound3);
         message(80, 120, 0, 0, "and music");
+#if !defined(PANDORA)
         message(32, 140, 0, 0, sound4);
         message(32, 160, 0, 0, sound5);
         message(32, 180, 0, 0, sound6);
         message(32, 200, 0, 0, sound7);
+#endif
         message(96, 220, 0, 0, "ESC - Exit");
         swi_blitz_wait(0);
         swi_fastspr_clearwindow();
         showtext();
 
-        switch (readopt(7))
+        switch (readopt(
+#if defined(PANDORA)
+            3
+#else
+            7
+#endif
+        ))
         {
         case 1: options.soundtype = 0; break;
         case 2: options.soundtype = 1; break;
@@ -339,7 +363,9 @@ void tunevolume()
     message(48, 116, 0, 0, "2. Quieter effects");
     message(48, 136, 0, 0, "3. Louder music");
     message(48, 156, 0, 0, "4. Quieter music");
+#if !defined(PANDORA)
     message(48-14, 176, 0, 0, tunevol1);
+#endif
     message(96, 220, 0, 0, "ESC - Exit");
     do
     {
@@ -350,7 +376,13 @@ void tunevolume()
         swi_blitz_wait(0);
         swi_fastspr_clearwindow();
         showtext();
-        int r0 = readopt(5);
+        int r0 = readopt(
+#if defined(PANDORA)
+            4
+#else
+            5
+#endif
+        );
         if (r0 == -1) return;
 
         if (r0 == 1)

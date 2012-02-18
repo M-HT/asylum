@@ -17,6 +17,9 @@
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
+#if defined(PANDORA)
+    #include <unistd.h>
+#endif
 
 #include "asylum_os.h"
 #include "asylum.h"
@@ -245,7 +248,11 @@ void bonus1()
 }
 
 const int keydefs[] =
+#if defined(PANDORA)
+{ -SDLK_LEFT, -SDLK_RIGHT, -SDLK_UP, -SDLK_DOWN, -SDLK_HOME };
+#else
 { -SDLK_z, -SDLK_x, -SDLK_SEMICOLON, -SDLK_PERIOD, -SDLK_RETURN };
+#endif
 
 void setdefaults()
 {
@@ -261,7 +268,11 @@ void setdefaults()
     options.firekey = keydefs[4];
     options.gearchange = (arm3 == 0) ? 0 : 1;
     options.explospeed = (arm3 == 0) ? 2 : 1;
+#if defined(PANDORA)
+    options.fullscreen = 1;
+#else
     options.fullscreen = 0;
+#endif
 #ifndef DISABLE_OPENGL
     options.opengl = 1;
     options.size = 1; // 640 x 512
@@ -707,7 +718,9 @@ void loadconfig()
             case 4: options.firekey = -temp; break;
             case 5: options.soundtype = temp; break;
                 //case 6: options.soundquality=temp; break;
+#if !defined(PANDORA)
             case 7: options.fullscreen = temp; break;
+#endif
 #ifndef DISABLE_OPENGL
             case 8: options.opengl = temp; break;
             case 9: options.size = temp; break;
@@ -740,7 +753,12 @@ void saveconfig()
             config_keywords[4], -options.firekey,
             config_keywords[5], options.soundtype,
             //config_keywords[6], options.soundquality,
-            config_keywords[7], options.fullscreen,
+            config_keywords[7],
+#if defined(PANDORA)
+            1,
+#else
+            options.fullscreen,
+#endif
             config_keywords[8],
 #ifndef DISABLE_OPENGL
             options.opengl,
@@ -767,6 +785,9 @@ void saveconfig()
 	                         options.initials[2],
             ((options.idpermit == 1) ? idpermitstring : ""));
     fclose(r0);
+#if defined(PANDORA)
+    sync();
+#endif
 }
 
 void loadgame()
@@ -822,6 +843,9 @@ void savegame()
         fwrite(neuronadr->contents, neuronadr->width, neuronadr->height, r0);
     }
     fclose(r0);
+#if defined(PANDORA)
+    sync();
+#endif
 }
 
 void permitid()
@@ -833,6 +857,9 @@ void permitid()
     {
         fprintf(r0, "%s", idpermitstring);
         fclose(r0);
+#if defined(PANDORA)
+        sync();
+#endif
     }
     options.idpermit = 1;
 }

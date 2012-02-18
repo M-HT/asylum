@@ -109,7 +109,13 @@ void update_keyboard()
             if (ke->keysym.unicode)
                 unibuf = ke->keysym.unicode;
             else
+            {
+#if defined(PANDORA)
+                if (keybuf > 32 && keybuf <= 127) unibuf = keybuf;
+                else
+#endif
                 unibuf = -1;
+            }
             break;
         case SDL_KEYUP:
             ke = (SDL_KeyboardEvent*)&e;
@@ -197,7 +203,7 @@ void keyread(key_state* ks)
  */
     }
    nojoystick:
-    if ((osbyte_81(options.leftkey) == 0xff) || !(r4&1)) 
+    if ((osbyte_81(options.leftkey) == 0xff) || !(r4&1))
       { if (++ks->leftpress == 0) ks->leftpress = 0xff;}
     else ks->leftpress = 0;
     if ((osbyte_81(options.rightkey) == 0xff) || !(r4&2))

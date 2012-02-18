@@ -79,7 +79,13 @@ Mix_Music* oggmusic[4];
 
 void init_audio()
 {
-    sound_available = !Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 1024);
+    sound_available = !Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2,
+#if defined(PANDORA)
+    2048
+#else
+    1024
+#endif
+    );
     if (!sound_available) fprintf(stderr, "Sound disabled: opening audio device failed: %s\n", Mix_GetError());
 }
 

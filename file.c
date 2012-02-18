@@ -46,11 +46,15 @@ FILE* find_game(int op)
 {
     char fullname[240] = "";
 
+#if defined(PANDORA)
+	strcpy(fullname, "..");
+#else
     char* home = getenv("HOME");
     if (home)
 	strcat(fullname, home);
     else
 	return NULL;
+#endif
     strcat(fullname, savegamename);
     switch (op)
     {
@@ -65,11 +69,15 @@ FILE* find_config(int op)
 {
     char fullname[240] = "";
 
+#if defined(PANDORA)
+	strcpy(fullname, "..");
+#else
     char* home = getenv("HOME");
     if (home)
 	strcat(fullname, home);
     else
 	strcat(fullname, resource_path);
+#endif
     strcat(fullname, configname);
     switch (op)
     {
@@ -326,6 +334,9 @@ int swi_osfile(int op, const char* name, char* start, char* end)
         f = fopen(name, "wb");
         for (char* i = start; i < end; i++) fputc(*i, f);
         fclose(f);
+#if defined(PANDORA)
+        sync();
+#endif
         return 0;
     case 5: // test file existence
         f = fopen(name, "rb");

@@ -1,3 +1,10 @@
+#if defined(PANDORA)
+    #define DISABLE_OPENGL
+    #undef RESOURCEPATH
+    #undef SCOREPATH
+    #undef HAVE_GET_EXE_PATH
+#endif
+
 #define DISPLAY_HWDOUBLEBUF 0
 
 #ifndef DISABLE_OPENGL

@@ -27,10 +27,59 @@ static int exposed;
 
 #define ESC_VALUE 27
 
+#if defined(GP2X)
+
+#if (SDL_MAJOR_VERSION > 1 || SDL_MAJOR_VERSION == 1 && (SDL_MINOR_VERSION > 2 || SDL_MINOR_VERSION == 2 && SDL_PATCHLEVEL >= 9 ) )
+    #include <SDL/SDL_gp2x.h>
+#endif
+
+#define GP2X_BUTTON_UP              (0)
+#define GP2X_BUTTON_DOWN            (4)
+#define GP2X_BUTTON_LEFT            (2)
+#define GP2X_BUTTON_RIGHT           (6)
+#define GP2X_BUTTON_UPLEFT          (1)
+#define GP2X_BUTTON_UPRIGHT         (7)
+#define GP2X_BUTTON_DOWNLEFT        (3)
+#define GP2X_BUTTON_DOWNRIGHT       (5)
+#define GP2X_BUTTON_CLICK           (18)
+#define GP2X_BUTTON_A               (12)
+#define GP2X_BUTTON_B               (13)
+#define GP2X_BUTTON_X               (14)
+#define GP2X_BUTTON_Y               (15)
+#define GP2X_BUTTON_L               (10)
+#define GP2X_BUTTON_R               (11)
+#define GP2X_BUTTON_START           (8)
+#define GP2X_BUTTON_SELECT          (9)
+#define GP2X_BUTTON_VOLUP           (16)
+#define GP2X_BUTTON_VOLDOWN         (17)
+
+static int gp2x_keyboard[] = {
+    SDLK_UP, 0, SDLK_LEFT, 0, SDLK_DOWN, 0, SDLK_RIGHT, 0,
+    SDLK_SPACE, SDLK_ESCAPE, SDLK_l, SDLK_r, SDLK_a, SDLK_b, SDLK_x, SDLK_y,
+    0, 0, 0
+};
+
+static char gp2x_keys[8];
+static int keybuf2;
+#endif
 
 void init_keyboard()
 {
     for (int i = 0; i < 512; i++) keyboard[i] = 0;
+
+#if defined(GP2X)
+    for (int i = 0; i < 8; i++) gp2x_keys[i] = 0;
+
+    SDL_InitSubSystem(SDL_INIT_JOYSTICK);
+    SDL_JoystickOpen(0);
+#if defined(SDL_GP2X__H)
+    if (SDL_GP2X_MouseType() == GP2X_MOUSE_TOUCHSCREEN)
+    {
+        SDL_GP2X_TouchpadMouseMotionEvents(0);
+        SDL_GP2X_TouchpadMouseButtonEvents(0);
+    }
+#endif
+#endif
 }
 
 void swi_removecursors()
@@ -50,7 +99,12 @@ int osbyte_79(int c)
 {
     update_keyboard();
     int key = keybuf;
+#if defined(GP2X)
+    keybuf = keybuf2;
+    keybuf2 = -1;
+#else
     keybuf = -1;
+#endif
     return key;
     //for (int i=0;i<512;i++) if (keyboard[i]) {/*printf("Returning %i\n",i);*/ return i;}
     return -1;
@@ -145,6 +199,224 @@ void update_keyboard()
         case SDL_QUIT:
             exithandler();
             break;
+#if defined(GP2X)
+        case SDL_JOYBUTTONDOWN:
+            switch (e.jbutton.button)
+            {
+            case GP2X_BUTTON_A:
+            case GP2X_BUTTON_B:
+            case GP2X_BUTTON_X:
+            case GP2X_BUTTON_Y:
+            case GP2X_BUTTON_L:
+            case GP2X_BUTTON_R:
+                keybuf = unibuf = gp2x_keyboard[e.jbutton.button];
+                keybuf2 = -1;
+                keyboard[keybuf] = 0xff;
+                break;
+            case GP2X_BUTTON_START:
+            case GP2X_BUTTON_SELECT:
+                keybuf = gp2x_keyboard[e.jbutton.button];
+                keybuf2 = unibuf = -1;
+                keyboard[keybuf] = 0xff;
+                break;
+
+            case GP2X_BUTTON_UP:
+                gp2x_keys[e.jbutton.button] = 0xff;
+                keyboard[gp2x_keyboard[e.jbutton.button]] = 0xff;
+                if (!gp2x_keys[GP2X_BUTTON_UPLEFT] && !gp2x_keys[GP2X_BUTTON_UPRIGHT])
+                {
+                    keybuf = gp2x_keyboard[e.jbutton.button];
+                    keybuf2 = unibuf = -1;
+                }
+                break;
+            case GP2X_BUTTON_DOWN:
+                gp2x_keys[e.jbutton.button] = 0xff;
+                keyboard[gp2x_keyboard[e.jbutton.button]] = 0xff;
+                if (!gp2x_keys[GP2X_BUTTON_DOWNLEFT] && !gp2x_keys[GP2X_BUTTON_DOWNRIGHT])
+                {
+                    keybuf = gp2x_keyboard[e.jbutton.button];
+                    keybuf2 = unibuf = -1;
+                }
+                break;
+            case GP2X_BUTTON_LEFT:
+                gp2x_keys[e.jbutton.button] = 0xff;
+                keyboard[gp2x_keyboard[e.jbutton.button]] = 0xff;
+                if (!gp2x_keys[GP2X_BUTTON_UPLEFT] && !gp2x_keys[GP2X_BUTTON_DOWNLEFT])
+                {
+                    keybuf = gp2x_keyboard[e.jbutton.button];
+                    keybuf2 = unibuf = -1;
+                }
+                break;
+            case GP2X_BUTTON_RIGHT:
+                gp2x_keys[e.jbutton.button] = 0xff;
+                keyboard[gp2x_keyboard[e.jbutton.button]] = 0xff;
+                if (!gp2x_keys[GP2X_BUTTON_UPRIGHT] && !gp2x_keys[GP2X_BUTTON_DOWNRIGHT])
+                {
+                    keybuf = gp2x_keyboard[e.jbutton.button];
+                    keybuf2 = unibuf = -1;
+                }
+                break;
+            case GP2X_BUTTON_UPLEFT:
+                gp2x_keys[e.jbutton.button] = 0xff;
+                keyboard[gp2x_keyboard[GP2X_BUTTON_LEFT]] = 0xff;
+                keyboard[gp2x_keyboard[GP2X_BUTTON_UP]] = 0xff;
+                if (!gp2x_keys[GP2X_BUTTON_LEFT])
+                {
+                    keybuf = gp2x_keyboard[GP2X_BUTTON_LEFT];
+                    unibuf = -1;
+                    keybuf2 = (gp2x_keys[GP2X_BUTTON_UP]) ? -1 : gp2x_keyboard[GP2X_BUTTON_UP];
+                }
+                else if (!gp2x_keys[GP2X_BUTTON_UP])
+                {
+                    keybuf = gp2x_keyboard[GP2X_BUTTON_UP];
+                    keybuf2 = unibuf = -1;
+                }
+                break;
+            case GP2X_BUTTON_UPRIGHT:
+                gp2x_keys[e.jbutton.button] = 0xff;
+                keyboard[gp2x_keyboard[GP2X_BUTTON_RIGHT]] = 0xff;
+                keyboard[gp2x_keyboard[GP2X_BUTTON_UP]] = 0xff;
+                if (!gp2x_keys[GP2X_BUTTON_RIGHT])
+                {
+                    keybuf = gp2x_keyboard[GP2X_BUTTON_RIGHT];
+                    unibuf = -1;
+                    keybuf2 = (gp2x_keys[GP2X_BUTTON_UP]) ? -1 : gp2x_keyboard[GP2X_BUTTON_UP];
+                }
+                else if (!gp2x_keys[GP2X_BUTTON_UP])
+                {
+                    keybuf = gp2x_keyboard[GP2X_BUTTON_UP];
+                    keybuf2 = unibuf = -1;
+                }
+                break;
+            case GP2X_BUTTON_DOWNLEFT:
+                gp2x_keys[e.jbutton.button] = 0xff;
+                keyboard[gp2x_keyboard[GP2X_BUTTON_LEFT]] = 0xff;
+                keyboard[gp2x_keyboard[GP2X_BUTTON_DOWN]] = 0xff;
+                if (!gp2x_keys[GP2X_BUTTON_DOWN])
+                {
+                    keybuf = gp2x_keyboard[GP2X_BUTTON_DOWN];
+                    unibuf = -1;
+                    keybuf2 = (gp2x_keys[GP2X_BUTTON_LEFT]) ? -1 : gp2x_keyboard[GP2X_BUTTON_LEFT];
+                }
+                else if (!gp2x_keys[GP2X_BUTTON_LEFT])
+                {
+                    keybuf = gp2x_keyboard[GP2X_BUTTON_LEFT];
+                    keybuf2 = unibuf = -1;
+                }
+                break;
+            case GP2X_BUTTON_DOWNRIGHT:
+                gp2x_keys[e.jbutton.button] = 0xff;
+                keyboard[gp2x_keyboard[GP2X_BUTTON_RIGHT]] = 0xff;
+                keyboard[gp2x_keyboard[GP2X_BUTTON_DOWN]] = 0xff;
+                if (!gp2x_keys[GP2X_BUTTON_DOWN])
+                {
+                    keybuf = gp2x_keyboard[GP2X_BUTTON_DOWN];
+                    unibuf = -1;
+                    keybuf2 = (gp2x_keys[GP2X_BUTTON_RIGHT]) ? -1 : gp2x_keyboard[GP2X_BUTTON_RIGHT];
+                }
+                else if (!gp2x_keys[GP2X_BUTTON_RIGHT])
+                {
+                    keybuf = gp2x_keyboard[GP2X_BUTTON_RIGHT];
+                    keybuf2 = unibuf = -1;
+                }
+                break;
+            case GP2X_BUTTON_VOLUP:
+                Change_HW_Audio_Volume(4);
+                break;
+            case GP2X_BUTTON_VOLDOWN:
+                Change_HW_Audio_Volume(-4);
+                break;
+            }
+            break;
+        case SDL_JOYBUTTONUP:
+            switch (e.jbutton.button)
+            {
+            case GP2X_BUTTON_A:
+            case GP2X_BUTTON_B:
+            case GP2X_BUTTON_X:
+            case GP2X_BUTTON_Y:
+            case GP2X_BUTTON_L:
+            case GP2X_BUTTON_R:
+            case GP2X_BUTTON_START:
+            case GP2X_BUTTON_SELECT:
+                keyboard[gp2x_keyboard[e.jbutton.button]] = 0;
+                break;
+
+            case GP2X_BUTTON_UP:
+                gp2x_keys[e.jbutton.button] = 0;
+                if (!gp2x_keys[GP2X_BUTTON_UPLEFT] && !gp2x_keys[GP2X_BUTTON_UPRIGHT])
+                {
+                    keyboard[gp2x_keyboard[e.jbutton.button]] = 0;
+                }
+                break;
+            case GP2X_BUTTON_DOWN:
+                gp2x_keys[e.jbutton.button] = 0;
+                if (!gp2x_keys[GP2X_BUTTON_DOWNLEFT] && !gp2x_keys[GP2X_BUTTON_DOWNRIGHT])
+                {
+                    keyboard[gp2x_keyboard[e.jbutton.button]] = 0;
+                }
+                break;
+            case GP2X_BUTTON_LEFT:
+                gp2x_keys[e.jbutton.button] = 0;
+                if (!gp2x_keys[GP2X_BUTTON_UPLEFT] && !gp2x_keys[GP2X_BUTTON_DOWNLEFT])
+                {
+                    keyboard[gp2x_keyboard[e.jbutton.button]] = 0;
+                }
+                break;
+            case GP2X_BUTTON_RIGHT:
+                gp2x_keys[e.jbutton.button] = 0;
+                if (!gp2x_keys[GP2X_BUTTON_UPRIGHT] && !gp2x_keys[GP2X_BUTTON_DOWNRIGHT])
+                {
+                    keyboard[gp2x_keyboard[e.jbutton.button]] = 0;
+                }
+                break;
+            case GP2X_BUTTON_UPLEFT:
+                gp2x_keys[e.jbutton.button] = 0;
+                if (!gp2x_keys[GP2X_BUTTON_LEFT])
+                {
+                    keyboard[gp2x_keyboard[GP2X_BUTTON_LEFT]] = 0;
+                }
+                if (!gp2x_keys[GP2X_BUTTON_UP])
+                {
+                    keyboard[gp2x_keyboard[GP2X_BUTTON_UP]] = 0;
+                }
+                break;
+            case GP2X_BUTTON_UPRIGHT:
+                gp2x_keys[e.jbutton.button] = 0;
+                if (!gp2x_keys[GP2X_BUTTON_RIGHT])
+                {
+                    keyboard[gp2x_keyboard[GP2X_BUTTON_RIGHT]] = 0;
+                }
+                if (!gp2x_keys[GP2X_BUTTON_UP])
+                {
+                    keyboard[gp2x_keyboard[GP2X_BUTTON_UP]] = 0;
+                }
+                break;
+            case GP2X_BUTTON_DOWNLEFT:
+                gp2x_keys[e.jbutton.button] = 0;
+                if (!gp2x_keys[GP2X_BUTTON_DOWN])
+                {
+                    keyboard[gp2x_keyboard[GP2X_BUTTON_DOWN]] = 0;
+                }
+                if (!gp2x_keys[GP2X_BUTTON_LEFT])
+                {
+                    keyboard[gp2x_keyboard[GP2X_BUTTON_LEFT]] = 0;
+                }
+                break;
+            case GP2X_BUTTON_DOWNRIGHT:
+                gp2x_keys[e.jbutton.button] = 0;
+                if (!gp2x_keys[GP2X_BUTTON_DOWN])
+                {
+                    keyboard[gp2x_keyboard[GP2X_BUTTON_DOWN]] = 0;
+                }
+                if (!gp2x_keys[GP2X_BUTTON_RIGHT])
+                {
+                    keyboard[gp2x_keyboard[GP2X_BUTTON_RIGHT]] = 0;
+                }
+                break;
+            }
+            break;
+#endif
         }
     }
 }

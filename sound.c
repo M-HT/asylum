@@ -82,6 +82,8 @@ void init_audio()
     sound_available = !Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2,
 #if defined(PANDORA)
     2048
+#elif defined(GP2X)
+    512
 #else
     1024
 #endif

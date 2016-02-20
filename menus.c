@@ -36,10 +36,17 @@ int escapehandler()
     wipetexttab();
     message(36, 40-256, 0, 4, "¤ Game Interrupted ¤");
     message(32-256, 72, 4, 0, "Please select action");
+#if defined(GP2X)
+    message(36+256, 104, -4, 0, "Sel.  - Abandon game");
+    message(40-256, 136, 4, 0, "X    - lose this life");
+    message(40, 168+256, 0, -4, "Y    - Return to Game");
+    message(40, 200+256, 0, -4, "A    - Alter Options");
+#else
     message(46+256, 104, -4, 0, "ESC - Abandon game");
     message(40-256, 136, 4, 0, "Q    - lose this life");
     message(40, 168+256, 0, -4, "R    - Return to Game");
     message(40, 200+256, 0, -4, "O    - Alter Options");
+#endif
     showtext();
     osbyte_7c(); //clear escape
     for (int r9 = 64; swi_readescapestate() == 0;)
@@ -63,13 +70,25 @@ int escapehandler()
         }
         switch (osbyte_79_unicode(1))
         {
+#if defined(GP2X)
+            case 'x': case 'X':
+#else
             case 'q': case 'Q':
+#endif
                 loselife();
                 return 0;
+#if defined(GP2X)
+            case 'a': case 'A':
+#else
             case 'o': case 'O':
+#endif
                 adjustopt();
                 return 0;
+#if defined(GP2X)
+            case 'y': case 'Y':
+#else
             case 'r': case 'R':
+#endif
                 rejoin();
                 return 0;
         }
@@ -99,11 +118,19 @@ int options_menu(int gameon)
         showchatscreen();
         swi_fastspr_clearwindow();
         message(128, 48, 0, 0, "Options");
+#if defined(GP2X)
+        message(32, 96, 0, 0, "A. Define Controls");
+        message(32, 128, 0, 0, "B. Tune Game Options");
+        message(88, 224, 0, 0, "Start - Play");
+        if (gameon == 0) message(32, 160, 0, 0, "X. Choose Mental Zone");
+        else message(32, 160, 0, 0, "X. Save Position");
+#else
         message(32, 96, 0, 0, "1. Define Controls");
         message(32, 128, 0, 0, "2. Tune Game Options");
         message(88, 224, 0, 0, "Fire - Play");
         if (gameon == 0) message(32, 160, 0, 0, "3. Choose Mental Zone");
         else message(32, 160, 0, 0, "3. Save Position");
+#endif
 // if (savedornot==1) message(32,192,0,0,"4. Save Settings");
         showtext();
         swi_blitz_wait(20); //
@@ -138,12 +165,22 @@ void getzone()
     showchatscreen();
     message(88, 48, 0, 0, "Choose which");
     message(96, 68, 0, 0, "mental zone");
+#if defined(GP2X)
+    message(64, 96, 0, 0, "A. Ego");
+    message(64, 128, 0, 0, "B. Psyche");
+    message(64, 160, 0, 0, "X. Id");
+#else
     message(64, 96, 0, 0, "1. Ego");
     message(64, 128, 0, 0, "2. Psyche");
     message(64, 160, 0, 0, "3. Id");
+#endif
     if (checkifextend())
     {
+#if defined(GP2X)
+        message(64, 192, 0, 0, "Y. Saved Game");
+#else
         message(64, 192, 0, 0, "4. Saved Game");
+#endif
         r0 = 4;
     }
     else r0 = 3;
@@ -177,7 +214,9 @@ void choosecontrol()
     wipetexttab();
     showchatscreen();
     message(96, 48, 0, 0, "Controls");
-#if defined(PANDORA)
+#if defined(GP2X)
+    message(64, 96, 0, 0, "A. Set Keys");
+#elif defined(PANDORA)
     message(64, 96, 0, 0, "1. Set Keys");
 #else
     message(64, 96, 0, 0, "1. Keyboard");
@@ -185,7 +224,7 @@ void choosecontrol()
 #endif
     showtext();
     switch (readopt(
-#if defined(PANDORA)
+#if defined(GP2X) || defined(PANDORA)
         1
 #else
         2
@@ -239,15 +278,25 @@ void tunegame()
     message(96, 48, 0, 0, "Tune Game");
     if (sound_available)
     {
+#if defined(GP2X)
+        message(64, 96, 0, 0, "A. Sound System");
+        message(64, 128, 0, 0, "B. Sound Volume");
+#else
         message(64, 96, 0, 0, "1. Sound System");
         message(64, 128, 0, 0, "2. Sound Volume");
+#endif
     }
     else
     {
         message(48, 96, 0, 0, "\x11");
         message(48, 128, 0, 0, "\x11");
+#if defined(GP2X)
+        message(64, 96, 0, 0, "A.");
+        message(64, 128, 0, 0, "B.");
+#else
         message(64, 96, 0, 0, "1.");
         message(64, 128, 0, 0, "2.");
+#endif
         message(115, 101, 0, 0, "Sound Not");
         message(112, 123, 0, 0, "Available");
     }
@@ -281,7 +330,11 @@ void tunegame()
         }
 }
 
-#if defined(PANDORA)
+#if defined(GP2X)
+char sound1[] = "-A. No Sound";
+char sound2[] = "-B. Sound";
+char sound3[] = "-X. Sound";
+#elif defined(PANDORA)
 char sound1[] = "-1. No Sound";
 char sound2[] = "-2. Sound";
 char sound3[] = "-3. Sound";
@@ -308,19 +361,23 @@ void tunesound()
         message(32, 80, 0, 0, sound2);
         message(32, 100, 0, 0, sound3);
         message(80, 120, 0, 0, "and music");
-#if !defined(PANDORA)
+#if !defined(GP2X) && !defined(PANDORA)
         message(32, 140, 0, 0, sound4);
         message(32, 160, 0, 0, sound5);
         message(32, 180, 0, 0, sound6);
         message(32, 200, 0, 0, sound7);
 #endif
+#if defined(GP2X)
+        message(96, 220, 0, 0, "Select - Exit");
+#else
         message(96, 220, 0, 0, "ESC - Exit");
+#endif
         swi_blitz_wait(0);
         swi_fastspr_clearwindow();
         showtext();
 
         switch (readopt(
-#if defined(PANDORA)
+#if defined(GP2X) || defined(PANDORA)
             3
 #else
             7
@@ -359,6 +416,13 @@ void tunevolume()
     if (sound_available && (options.soundtype == 2)) swi_bodgemusic_start(1, 0);
     swi_bodgemusic_volume(options.musicvol);
     message(80, 32, 0, 0, "Change volume");
+#if defined(GP2X)
+    message(48, 96, 0, 0, "A. Louder effects");
+    message(48, 116, 0, 0, "B. Quieter effects");
+    message(48, 136, 0, 0, "X. Louder music");
+    message(48, 156, 0, 0, "Y. Quieter music");
+    message(96, 220, 0, 0, "Select - Exit");
+#else
     message(48, 96, 0, 0, "1. Louder effects");
     message(48, 116, 0, 0, "2. Quieter effects");
     message(48, 136, 0, 0, "3. Louder music");
@@ -367,6 +431,7 @@ void tunevolume()
     message(48-14, 176, 0, 0, tunevol1);
 #endif
     message(96, 220, 0, 0, "ESC - Exit");
+#endif
     do
     {
        tunevolumeloop:
@@ -377,7 +442,7 @@ void tunevolume()
         swi_fastspr_clearwindow();
         showtext();
         int r0 = readopt(
-#if defined(PANDORA)
+#if defined(GP2X) || defined(PANDORA)
             4
 #else
             5
@@ -549,9 +614,25 @@ int readopt(int maxopt)
             osbyte_7c(); // clear escape
             return -1;
         }
+#if defined(GP2X)
+        if ((r1 == 'a' || r1 == 'A') && maxopt >= 1)
+            return 1;
+        if ((r1 == 'b' || r1 == 'B') && maxopt >= 2)
+            return 2;
+        if ((r1 == 'x' || r1 == 'X') && maxopt >= 3)
+            return 3;
+        if ((r1 == 'y' || r1 == 'Y') && maxopt >= 4)
+            return 4;
+        if ((r1 == 'l' || r1 == 'L') && maxopt >= 5)
+            return 5;
+        if ((r1 == 'r' || r1 == 'R') && maxopt >= 6)
+            return 6;
+        if (osbyte_81(-SDLK_SPACE) == 0xff)
+#else
         if (r1 >= '0' && r1 <= '0' + maxopt)
             return r1 - '0';
         if (osbyte_81(options.firekey) == 0xff)
+#endif
             return 0;
         if (need_redraw())
         {
@@ -581,7 +662,11 @@ int prelude()
     message(2028, _x+7*24, 0, _v, "the rogue brain cells");
     message(2036, _x+8*24, 0, _v, "in his mind and shut");
     message(2100, _x+9*24, 0, _v, "Them down?");
+#if defined(GP2X)
+    message(2096, _x+10*24, 0, _v, "PRESS Start");
+#else
     message(2096, _x+10*24, 0, _v, "PRESS SPACE");
+#endif
     message(2088, _x+12*24, 0, _v, "Cheat Mode!!!");
     message(2028, _x+14*24, 0, _v, "F1, F2 Get Weapons");
     message(2028, _x+15*24, 0, _v, "F3 - Restore Strength");
@@ -744,7 +829,11 @@ int showhighscore()
     loadscores(highscorearea, options.mentalzone);
     updatehst();
     showhst();
+#if defined(GP2X)
+    message(96, 224, 0, 0, "press start");
+#else
     message(96, 224, 0, 0, "press fire");
+#endif
     releaseclip();
     showtext();
     readopt(0);
@@ -788,7 +877,11 @@ void updatehst()
         for (int i = 0; i < 3; i++) r10[i] = options.initials[i];
         for (int r8 = 3; r8 > 0; r8--, r10++)
         {
+#if defined(GP2X)
+            while (osbyte_81(0) != SDLK_SPACE)
+#else
             while (osbyte_81(0) != -options.firekey)
+#endif
             {
                scorekeyloop:
 //if (--r9<0) goto scoreexit;

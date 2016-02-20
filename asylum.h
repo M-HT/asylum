@@ -466,6 +466,9 @@ void screensave();
 void getvars();
 void init_palette();
 void vduread(asylum_options);
+#if defined(GP2X)
+void Change_HW_Audio_Volume (int amount);
+#endif
 int main(int argc, char** argv);
 void load_voices(int dumpmusic);
 void init_sounds();

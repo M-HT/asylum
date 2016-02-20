@@ -1,11 +1,15 @@
-#if defined(PANDORA)
+#if defined(GP2X) || defined(PANDORA)
     #define DISABLE_OPENGL
     #undef RESOURCEPATH
     #undef SCOREPATH
     #undef HAVE_GET_EXE_PATH
 #endif
 
-#define DISPLAY_HWDOUBLEBUF 0
+#if defined(GP2X)
+    #define DISPLAY_HWDOUBLEBUF 1
+#else
+    #define DISPLAY_HWDOUBLEBUF 0
+#endif
 
 #ifndef DISABLE_OPENGL
     #define COLORKEY 0

@@ -4,7 +4,7 @@
 
 SDL Asylum is a C port of the computer game Asylum, which was written by Andy Southgate in 1994 for the Acorn Archimedes and is now public domain. It should be possible to run it on any platform which support SDL and OpenGL graphics. It's developed primarily on Linux but has also been built successfully on Cygwin, FreeBSD, Windows and Haiku.
 
-This fork contains bug fixes and Pandora specific functionality.
+This fork contains bug fixes and Pandora/GP2X specific functionality.
 
 
 ##Instructions

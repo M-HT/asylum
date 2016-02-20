@@ -19,6 +19,11 @@
 #include <SDL/SDL_mixer.h>
 #if defined(PANDORA)
     #include <unistd.h>
+#elif defined(GP2X)
+    #include <sys/ioctl.h>
+    #include <unistd.h>
+    #include <sys/soundcard.h>
+    #include <fcntl.h>
 #endif
 
 #include "asylum_os.h"
@@ -138,6 +143,7 @@ int game()
             frameinc = 1;
             rate50 = 1;
             swi_blitz_wait(1);
+            uint32_t last_tick = SDL_GetTicks();
             while (!swi_readescapestate())
             {
                 mainloop:
@@ -183,8 +189,31 @@ int game()
                 if (cheatpermit == 1) cheatread();
                 scorewipe();
                 plotscore();
-                frameinc = ((options.gearchange == 0) ? 2 : 1);
-                swi_blitz_wait(frameinc);
+                if (options.gearchange == 0)
+                {
+                    frameinc = 2;
+                    swi_blitz_wait(frameinc);
+                }
+                else
+                {
+                    frameinc = 1;
+
+                    uint32_t diff = 20;
+                    uint32_t current_tick = SDL_GetTicks();
+                    if (current_tick - last_tick >= 2 * diff)
+                    {
+                        last_tick = current_tick - diff;
+                    }
+                    else
+                    {
+                        while (current_tick - last_tick < diff)
+                        {
+                            SDL_Delay(1);
+                            current_tick = SDL_GetTicks();
+                        }
+                        last_tick += diff;
+                    }
+                }
                 if ((rate50 != 1) && (frameinc < 2)) //rate 25 but one frame passed
                 {
                     swi_blitz_wait(1);
@@ -250,6 +279,8 @@ void bonus1()
 const int keydefs[] =
 #if defined(PANDORA)
 { -SDLK_LEFT, -SDLK_RIGHT, -SDLK_UP, -SDLK_DOWN, -SDLK_HOME };
+#elif defined(GP2X)
+{ -SDLK_LEFT, -SDLK_RIGHT, -SDLK_UP, -SDLK_DOWN, -SDLK_a };
 #else
 { -SDLK_z, -SDLK_x, -SDLK_SEMICOLON, -SDLK_PERIOD, -SDLK_RETURN };
 #endif
@@ -483,6 +514,83 @@ void c_array_initializers()
     init_keyboard();
 }
 
+#if defined(GP2X)
+static int InitialVolume;
+
+// Set new GP2X mixer level, 0-100
+static void Set_GP2X_Volume (int newvol)
+{
+    int soundDev, vol;
+
+    if ((newvol >= 0) && (newvol <= 100))
+    {
+        soundDev = open("/dev/mixer", O_RDWR);
+        if (soundDev != -1)
+        {
+            vol = ((newvol << 8) | newvol);
+            ioctl(soundDev, SOUND_MIXER_WRITE_PCM, &vol);
+            close(soundDev);
+        }
+    }
+}
+
+// Returns 0-100, current mixer volume, -1 on error.
+static int Get_GP2X_Volume (void)
+{
+    int soundDev, vol;
+
+    vol = -1;
+    soundDev = open("/dev/mixer", O_RDONLY);
+    if (soundDev != -1)
+    {
+        ioctl(soundDev, SOUND_MIXER_READ_PCM, &vol);
+        close(soundDev);
+        if (vol != -1)
+        {
+            //just return one channel , not both channels, they're hopefully the same anyways
+            return (vol & 0xFF);
+        }
+    }
+
+    return vol;
+}
+
+static void Set_Initial_GP2X_Volume (void)
+{
+    Set_GP2X_Volume(InitialVolume);
+}
+
+void Change_HW_Audio_Volume (int amount)
+{
+    int current_volume;
+
+    current_volume = Get_GP2X_Volume();
+
+    if (current_volume == -1) current_volume = 68;
+
+    if ((amount > 1) && current_volume < 12)
+    {
+        amount = 1;
+    }
+    else if ((amount < -1) && current_volume <= 12)
+    {
+        amount = -1;
+    }
+
+    current_volume += amount;
+
+    if (current_volume > 100)
+    {
+        current_volume = 100;
+    }
+    else if (current_volume < 0)
+    {
+        current_volume = 0;
+    }
+    Set_GP2X_Volume(current_volume);
+}
+#endif
+
 int main(int argc, char** argv)
 {
     find_resources();
@@ -498,11 +606,19 @@ int main(int argc, char** argv)
     open_scores();
     dropprivs();
 
+#if defined(GP2X)
+    InitialVolume = Get_GP2X_Volume();
+    atexit(Set_Initial_GP2X_Volume);
+#endif
+
     SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO);
     SDL_WM_SetCaption("Asylum", "Asylum");
     SDL_EnableUNICODE(1);
 #ifndef _NO_SOUND
     init_audio();
+#endif
+#if defined(GP2X)
+    Set_Initial_GP2X_Volume();
 #endif
     c_array_initializers();
     swi_stasis_control(8, 8);
@@ -718,7 +834,7 @@ void loadconfig()
             case 4: options.firekey = -temp; break;
             case 5: options.soundtype = temp; break;
                 //case 6: options.soundquality=temp; break;
-#if !defined(PANDORA)
+#if !(defined(GP2X) || defined(PANDORA))
             case 7: options.fullscreen = temp; break;
 #endif
 #ifndef DISABLE_OPENGL
@@ -754,7 +870,7 @@ void saveconfig()
             config_keywords[5], options.soundtype,
             //config_keywords[6], options.soundquality,
             config_keywords[7],
-#if defined(PANDORA)
+#if defined(GP2X) || defined(PANDORA)
             1,
 #else
             options.fullscreen,
@@ -785,7 +901,7 @@ void saveconfig()
 	                         options.initials[2],
             ((options.idpermit == 1) ? idpermitstring : ""));
     fclose(r0);
-#if defined(PANDORA)
+#if defined(GP2X) || defined(PANDORA)
     sync();
 #endif
 }
@@ -843,7 +959,7 @@ void savegame()
         fwrite(neuronadr->contents, neuronadr->width, neuronadr->height, r0);
     }
     fclose(r0);
-#if defined(PANDORA)
+#if defined(GP2X) || defined(PANDORA)
     sync();
 #endif
 }
@@ -857,7 +973,7 @@ void permitid()
     {
         fprintf(r0, "%s", idpermitstring);
         fclose(r0);
-#if defined(PANDORA)
+#if defined(GP2X) || defined(PANDORA)
         sync();
 #endif
     }

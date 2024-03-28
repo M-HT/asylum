@@ -16,7 +16,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "asylum.h"
-#include <SDL/SDL_mixer.h>
 
 extern const char _bonuslow = 16, _bonushigh = 31, _megabonuslim = 35;
 const char _neuronlowlim = 40, _neuronhighlim = 47;

@@ -15,19 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <SDL/SDL.h>
-
 #include "asylum.h"
-#ifndef DISABLE_OPENGL
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
 #include <math.h>
-#if defined(GP2X)
-    #if (SDL_MAJOR_VERSION > 1 || SDL_MAJOR_VERSION == 1 && (SDL_MINOR_VERSION > 2 || SDL_MINOR_VERSION == 2 && SDL_PATCHLEVEL >= 9 ) )
-        #include <SDL/SDL_gp2x.h>
-    #endif
-#endif
 
 extern fastspr_sprite charsadr[48];
 extern fastspr_sprite blockadr[256];
@@ -51,20 +40,22 @@ struct vduvar
     int strengthx; int strengthy;
     int strengthw; int strengthh;
     int bonusx; int bonusy; int bonush;
-#ifndef DISABLE_OPENGL
     int opengl;
-#endif
 } vduvar;
 
-SDL_Surface* ArcScreen;
+SDL_Window* Window = NULL;
+SDL_Renderer *Renderer = NULL;
+SDL_Texture *WindowTexture = NULL;
+SDL_GLContext Context = NULL;
+SDL_Surface* ArcScreen = NULL;
 //SDL_Surface* GameScreen;
 //SDL_Surface* ChatScreen;
 fastspr_sprite GameScreen;
 fastspr_sprite ChatScreen;
-SDL_Surface* backsprite, *backspritedisp;
-SDL_Surface* wipescr;
-SDL_Surface* redness;
-SDL_Surface* greyness;
+SDL_Surface* backsprite = NULL, *backspritedisp;
+SDL_Surface* wipescr = NULL;
+SDL_Surface* redness = NULL;
+SDL_Surface* greyness = NULL;
 SDL_Rect clip;
 
 #define _textno 32
@@ -82,44 +73,18 @@ typedef struct textinfo
 textinfo texttabofs[_textno];
 
 
-#ifndef DISABLE_OPENGL
-    #define SPRITE_COLOR(x) x
-
-    #define SURFACE_MODE SDL_HWSURFACE
-#else
-
-uint_fast32_t inline SPRITE_COLOR(uint_fast32_t col) {
-    col = col & 0x00ffffff;
-    return (col == COLORKEY)?NCOLORKEY:col;
-}
-
-    #define SURFACE_MODE SDL_SWSURFACE
-
-static SDL_Surface *ConvertSurfaceToDisplayFormat(SDL_Surface *surface, int freesurface)
-{
-    SDL_Surface *temp = SDL_DisplayFormat(surface);
-    if (temp != NULL)
-    {
-        if (freesurface) SDL_FreeSurface(surface);
-        return temp;
-    }
-    else
-    {
-        return (freesurface)?surface:NULL;
-    }
-}
-#endif
-
-
 void switchbank()
 {
     //osbyte_71();
     //swi_blitz_screenretrieve();
-#ifndef DISABLE_OPENGL
-    if (vduvar.opengl) SDL_GL_SwapBuffers();
+    if (vduvar.opengl) SDL_GL_SwapWindow(Window);
     else
-#endif
-    SDL_Flip(ArcScreen);
+    {
+        SDL_UpdateTexture(WindowTexture, NULL, ArcScreen->pixels, ArcScreen->pitch);
+        SDL_RenderClear(Renderer);
+        SDL_RenderCopy(Renderer, WindowTexture, NULL, NULL);
+        SDL_RenderPresent(Renderer);
+    }
 }
 
 void fspplotscaled(fastspr_sprite* sprites, char n, float x, float y,
@@ -131,7 +96,6 @@ void fspplotscaled(fastspr_sprite* sprites, char n, float x, float y,
     float posx = x-sprite.x*xs, posy = y-sprite.y*ys;
 
 
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	// This rescales as requested ...
@@ -153,7 +117,6 @@ void fspplotscaled(fastspr_sprite* sprites, char n, float x, float y,
 	glEnd();
     }
     else
-#endif
     {
 	// ... this doesn't.
 	pos.x = (int)posx;  pos.y = (int)posy;
@@ -344,11 +307,7 @@ void texthandler(int do_animation)
 
 void mazeplot(int xpos, int ypos)
 {
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl) showgamescreen();
-#elif (DISPLAY_HWDOUBLEBUF)
-    showgamescreen();
-#endif
     writeclip();
     backdrop(xpos, ypos);
 
@@ -405,9 +364,7 @@ void mazeplot(int xpos, int ypos)
    //skip2:;
 }
 
-#ifndef DISABLE_OPENGL
-GLuint batex[1];
-#endif
+GLuint batex[1] = {0};
 void backdrop(int xpos, int ypos)
 {
     //  swi_fastspr_clearwindow();
@@ -426,7 +383,6 @@ void backdrop(int xpos, int ypos)
     back_to_blit.x = ((48-r2)*vduvar.backw)/48; back_to_blit.y = (r4*vduvar.backh)/32;
     back_to_blit.w = vduvar.backw; back_to_blit.h = vduvar.backh;
 
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	float btbx = 0.375*(48-float_r2)/48.0; float btby = 0.5*float_r4/32.0;
@@ -449,7 +405,6 @@ void backdrop(int xpos, int ypos)
 	    }
     }
     else
-#endif
     {
         for (loc_to_blit.y = vduvar.gamey; loc_to_blit.y < vduvar.gamey+vduvar.gameh; loc_to_blit.y += vduvar.backh)
 	    for (loc_to_blit.x = vduvar.gamex; loc_to_blit.x < vduvar.gamex+vduvar.gamew; loc_to_blit.x += vduvar.backw)
@@ -480,9 +435,7 @@ void plotbonus(char bonusctr, int16_t bonusreplot)
     writeclip(); // reset the clip window
 }
 
-#ifndef DISABLE_OPENGL
-GLuint redtex[1], greytex[1];
-#endif
+GLuint redtex[1] = {0}, greytex[1] = {0};
 void showstrength(int r3)
 {
    //nolager:;
@@ -495,7 +448,6 @@ void showstrength(int r3)
     strengthpart.x = 0; strengthpart.y = framectr&0x1f;
     strengthpart.w = vduvar.strengthw;
     strengthpart.h = vduvar.strengthh;
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	glBindTexture(GL_TEXTURE_2D, *greytex);
@@ -511,12 +463,10 @@ void showstrength(int r3)
 	glEnd();
     }
     else
-#endif
     {
         SDL_BlitSurface(greyness, &strengthpart, ArcScreen, &strengthloc);
     }
     strengthpart.w = (vduvar.strengthw*r3)/_strengthmax;
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	glBindTexture(GL_TEXTURE_2D, *redtex);
@@ -532,7 +482,6 @@ void showstrength(int r3)
 	glEnd();
     }
     else
-#endif
     {
         SDL_BlitSurface(redness, &strengthpart, ArcScreen, &strengthloc);
     }
@@ -548,9 +497,7 @@ void scorewipe()
     scorearea.y = vduvar.scorey-16/2;
     scorearea.w = 128; scorearea.h = 16;
     releaseclip();
-#ifndef DISABLE_OPENGL
     if (!vduvar.opengl)
-#endif
     {
         SDL_BlitSurface(wipescr, NULL, ArcScreen, &scorearea);
     }
@@ -564,9 +511,7 @@ void scorewiperead()
     scorearea.x = vduvar.scorex;
     scorearea.y = vduvar.scorey-16/2;
     scorearea.w = 128; scorearea.h = 16;
-#ifndef DISABLE_OPENGL
     if (!vduvar.opengl)
-#endif
     {
         SDL_BlitSurface(ArcScreen, &scorearea, wipescr, NULL);
     }
@@ -613,7 +558,6 @@ void writeclip()
 
 void releaseclip()
 {
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	glDisable(GL_CLIP_PLANE0);
@@ -622,7 +566,6 @@ void releaseclip()
 	glDisable(GL_CLIP_PLANE3);
     }
     else
-#endif
     SDL_SetClipRect(ArcScreen, NULL);
 }
 
@@ -650,9 +593,7 @@ void showgamescreen()
     //SDL_BlitSurface(GameScreen, NULL, ArcScreen, NULL);
     fspplot(&GameScreen, 0, 0, 0);
     #if 0
-    #ifndef DISABLE_OPENGL
     if (!vduvar.opengl)
-    #endif
         switchbank();
     #endif
 
@@ -673,9 +614,7 @@ void showchatscreen()
     fspplot(&ChatScreen, 0, 0, 0);
     #if 0
     switchbank();
-    #ifndef DISABLE_OPENGL
     if (vduvar.opengl) fspplot(&ChatScreen, 0, 0, 0);
-    #endif
     #endif
 
     clip.x = 20;
@@ -710,21 +649,36 @@ void init_strengthcol()
     int redpitch, greypitch;
     int w = vduvar.strengthw, h = 32+vduvar.strengthh;
 
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	glEnable(GL_TEXTURE_2D);
-	glGenTextures(1, redtex);
-	glGenTextures(1, greytex);
+	if (*redtex == 0) glGenTextures(1, redtex);
+	if (*greytex == 0) glGenTextures(1, greytex);
 	redpixels = (Uint32*)malloc(128*64*sizeof(Uint32));
 	greypixels = (Uint32*)malloc(128*64*sizeof(Uint32));
 	redpitch = greypitch = 128;
     }
     else
-#endif
     {
-	redness = SDL_CreateRGBSurface(SURFACE_MODE, w, h, 32, 0xff, 0xff00, 0xff0000, 0);
-    greyness = SDL_CreateRGBSurface(SURFACE_MODE, w, h, 32, 0xff, 0xff00, 0xff0000, 0);
+        if ((redness != NULL) && ((redness->w != w) || (redness->h != h)))
+        {
+            SDL_FreeSurface(redness);
+            redness = NULL;
+        }
+        if ((greyness != NULL) && ((greyness->w != w) || (greyness->h != h)))
+        {
+            SDL_FreeSurface(greyness);
+            greyness = NULL;
+        }
+
+        if (redness == NULL)
+        {
+            redness = SDL_CreateRGBSurface(0, w, h, 32, 0xff, 0xff00, 0xff0000, 0);
+        }
+        if (greyness == NULL)
+        {
+            greyness = SDL_CreateRGBSurface(0, w, h, 32, 0xff, 0xff00, 0xff0000, 0);
+        }
 	SDL_LockSurface(redness);
 	SDL_LockSurface(greyness);
 	redpixels = (Uint32*)redness->pixels;
@@ -735,8 +689,8 @@ void init_strengthcol()
     for (int j = 0; j < 32; j++)
         for (int i = 0; i < w; i++)
         {
-            redpixels[j*redpitch+i] = SPRITE_COLOR(0xff000000+0x11*(11+(random()%5)));  // varying shade of red
-            greypixels[j*greypitch+i] = SPRITE_COLOR(0xff000000+0x111111*(3&random())); // varying shade of dark grey
+            redpixels[j*redpitch+i] = 0xff000000+0x11*(11+(random()%5));  // varying shade of red
+            greypixels[j*greypitch+i] = 0xff000000+0x111111*(3&random()); // varying shade of dark grey
         }
     for (int j = 32; j < 32+vduvar.strengthh; j++)
         for (int i = 0; i < w; i++)
@@ -744,7 +698,6 @@ void init_strengthcol()
             redpixels[j*redpitch+i] = redpixels[(j-32)*redpitch+i];
             greypixels[j*greypitch+i] = greypixels[(j-32)*greypitch+i];
         }
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	glBindTexture(GL_TEXTURE_2D, *redtex);
@@ -757,15 +710,10 @@ void init_strengthcol()
         free(greypixels);
     }
     else
-#endif
     {
 	SDL_UnlockSurface(greyness);
 	SDL_UnlockSurface(redness);
     }
-#ifdef DISABLE_OPENGL
-    redness = ConvertSurfaceToDisplayFormat(redness, 1);
-    greyness = ConvertSurfaceToDisplayFormat(greyness, 1);
-#endif
 }
 
 uint_fast32_t palette[256];
@@ -774,11 +722,11 @@ void init_palette()
 {
     for (int i = 0; i < 256; i++) {
         palette[i]
-        = SPRITE_COLOR(0xff000000 // opaque
+        = 0xff000000 // opaque
           +((i&0x80) ? 0x880000 : 0)+((i&0x40) ? 0x8800 : 0)
           +((i&0x20) ? 0x4400 : 0)+((i&0x10) ? 0x88 : 0)
           +((i&0x08) ? 0x440000 : 0)+((i&0x04) ? 0x44 : 0)
-          +(i&0x03)*0x111111);
+          +(i&0x03)*0x111111;
     }
 }
 
@@ -787,22 +735,24 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
     Uint32* r10;
     Uint32* r9;
 
-#ifndef DISABLE_OPENGL
     Uint32* data = NULL;
 
     if (vduvar.opengl)
     {
 	glEnable(GL_TEXTURE_2D);
-	glGenTextures(1, &DecompScreen->t);
+	if (DecompScreen->t == 0) glGenTextures(1, &DecompScreen->t);
 	glBindTexture(GL_TEXTURE_2D, DecompScreen->t);
 	data = (Uint32*)malloc(512*512*sizeof(Uint32));
 	r10 = data;
 	r9 = 512*256 + r10;
     }
     else
-#endif
     {
-        DecompScreen->s = SDL_CreateRGBSurface(SURFACE_MODE, 320, 256, 32,
+        if (DecompScreen->s != NULL)
+        {
+            SDL_FreeSurface(DecompScreen->s);
+        }
+        DecompScreen->s = SDL_CreateRGBSurface(0, 320, 256, 32,
 					       0xff, 0xff00, 0xff0000, 0);
         SDL_LockSurface(DecompScreen->s);
         r10 = (Uint32*)DecompScreen->s->pixels;
@@ -822,9 +772,7 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
 	    {
                //loopb6:
                *(r10++) = s;
-#ifndef DISABLE_OPENGL
 	        if (vduvar.opengl) if (((r10-data)%512) == 320)  r10 += (512-320);
-#endif
 	    }
         }
         else //pattern:
@@ -832,14 +780,11 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
 	    {
                //loopb5:
                *(r10++) = palette[0xff&*(r11++)];
-#ifndef DISABLE_OPENGL
 	        if (vduvar.opengl) if (((r10-data)%512) == 320)  r10 += (512-320);
-#endif
 	    }
        //decompdone:;
     }
     DecompScreen->w = vduvar.width;  DecompScreen->h = vduvar.height;
-#ifndef DISABLE_OPENGL
     DecompScreen->texw = (vduvar.width*8)/5; DecompScreen->texh = vduvar.height*2;
     if (vduvar.opengl)
     {
@@ -849,14 +794,10 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
         free(data);
     }
     else
-#endif
     {
 	DecompScreen->x = 0;  DecompScreen->y = 0;
 	SDL_UnlockSurface(DecompScreen->s);
     }
-#ifdef DISABLE_OPENGL
-    DecompScreen->s = ConvertSurfaceToDisplayFormat(DecompScreen->s, 1);
-#endif
 }
 
 void vduread(asylum_options options)
@@ -875,60 +816,184 @@ void vduread(asylum_options options)
     vduvar.strengthw = (_strengthmax>>8); vduvar.strengthh = 6;
     vduvar.bonusx = 290; vduvar.bonusy = 232; vduvar.bonush = 20;
     vduvar.sprw = (16*8)/viewsize; vduvar.sprh = (16*8)/viewsize;
-#ifndef DISABLE_OPENGL
-    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 5 );
-    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 5 );
-    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 5 );
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 4 );
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-#endif
-    ArcScreen = SDL_SetVideoMode( vduvar.xreso, vduvar.yreso,
-#if defined(GP2X)
-        16,
-#else
-        24 /*bpp*/,
-#endif
-#ifndef DISABLE_OPENGL
-        (options.opengl ? SDL_OPENGL : 0) |
-#endif
-		(options.fullscreen ? SDL_FULLSCREEN : 0)
-#if (DISPLAY_HWDOUBLEBUF)
-        | SDL_HWSURFACE | SDL_DOUBLEBUF
-#endif
-    );
-    if (ArcScreen == NULL)
+
+    if ((Window != NULL) && options.opengl && !(SDL_GetWindowFlags(Window) & SDL_WINDOW_OPENGL))
     {
-	printf("Failed to set video mode: %s\n", SDL_GetError());
-	abort_game();
+        SDL_DestroyTexture(WindowTexture);
+        WindowTexture = NULL;
+        SDL_DestroyRenderer(Renderer);
+        Renderer = NULL;
+        SDL_DestroyWindow(Window);
+        Window = NULL;
     }
-    SDL_ShowCursor(SDL_DISABLE);
-#if defined(GP2X) && defined(SDL_GP2X__H)
+
+    if (options.opengl)
     {
-        SDL_Rect size;
+        SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 5 );
+        SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 5 );
+        SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 5 );
+        SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 4 );
+        SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+    }
 
-        SDL_GP2X_GetPhysicalScreenSize(&size);
-
-        if (size.w == 320) // lcd, not tv out
+    if (Window == NULL)
+    {
+        Window = SDL_CreateWindow("Asylum", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, vduvar.xreso, vduvar.yreso,
+            (options.opengl ? SDL_WINDOW_OPENGL : 0) |
+            (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0) |
+            SDL_WINDOW_HIDDEN
+        );
+        if (Window == NULL)
         {
-            size.x = 0;
-            size.y = 8;
-            size.h = 240;
-            SDL_GP2X_Display(&size);
+            printf("Failed to create window: %s\n", SDL_GetError());
+            abort_game();
         }
     }
-#endif
-#ifndef DISABLE_OPENGL
-    vduvar.opengl = ((ArcScreen->flags & SDL_OPENGL) != 0);
-#endif
-    wipescr = SDL_CreateRGBSurface(SURFACE_MODE, 128, 16, 32, 0xff, 0xff00, 0xff0000, 0);
-// backsprite contains four copies of the backdrop tile
-    backsprite = SDL_CreateRGBSurface(SURFACE_MODE, 2*48, 2*32, 32, 0xff, 0xff00, 0xff0000, 0);
+    else
+    {
+        SDL_SetWindowSize(Window, vduvar.xreso, vduvar.yreso);
+        SDL_SetWindowFullscreen(Window, options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+    }
+
+    if (options.opengl)
+    {
+        if (WindowTexture != NULL)
+        {
+            SDL_DestroyTexture(WindowTexture);
+            WindowTexture = NULL;
+        }
+        if (Renderer != NULL)
+        {
+            SDL_DestroyRenderer(Renderer);
+            Renderer = NULL;
+        }
+
+        if (Context == NULL)
+        {
+            Context = SDL_GL_CreateContext(Window);
+            if (Context == NULL)
+            {
+                printf("Failed to create OpenGL context: %s\n", SDL_GetError());
+                abort_game();
+            }
+        }
+    }
+    else
+    {
+        if (Context != NULL)
+        {
+            SDL_GL_DeleteContext(Context);
+            Context = NULL;
+        }
+
+        if (Renderer == NULL)
+        {
+            Renderer = SDL_CreateRenderer(Window, -1, 0);
+            if (Renderer == NULL) {
+                printf("Failed to create renderer: %s\n", SDL_GetError());
+                abort_game();
+            }
+        }
+
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+        SDL_RenderSetLogicalSize(Renderer, vduvar.xreso, vduvar.yreso);
+
+        if ((ArcScreen != NULL) && ((ArcScreen->w != vduvar.xreso) || (ArcScreen->h != vduvar.yreso)))
+        {
+            SDL_FreeSurface(ArcScreen);
+            ArcScreen = NULL;
+        }
+        if (ArcScreen == NULL)
+        {
+            ArcScreen = SDL_CreateRGBSurface(0, vduvar.xreso, vduvar.yreso, 32, 0xff, 0xff00, 0xff0000, 0);
+            if (ArcScreen == NULL)
+            {
+                printf("Failed to create surface: %s\n", SDL_GetError());
+                abort_game();
+            }
+        }
+
+        if (WindowTexture != NULL)
+        {
+            int tw, th, res;
+            res = SDL_QueryTexture(WindowTexture, NULL, NULL, &tw, &th);
+            if ((res < 0) || (tw != vduvar.xreso) || (th != vduvar.yreso))
+            {
+                SDL_DestroyTexture(WindowTexture);
+                WindowTexture = NULL;
+            }
+        }
+        if (WindowTexture == NULL)
+        {
+            WindowTexture = SDL_CreateTexture(Renderer, ArcScreen->format->format, SDL_TEXTUREACCESS_STREAMING, vduvar.xreso, vduvar.yreso);
+            if (WindowTexture == NULL)
+            {
+                printf("Failed to create texture: %s\n", SDL_GetError());
+                abort_game();
+            }
+        }
+    }
+
+    SDL_ShowWindow(Window);
+
+    SDL_ShowCursor(SDL_DISABLE);
+    vduvar.opengl = options.opengl;
+    if (!vduvar.opengl)
+    {
+        if (wipescr == NULL)
+        {
+            wipescr = SDL_CreateRGBSurface(0, 128, 16, 32, 0xff, 0xff00, 0xff0000, 0);
+        }
+        // backsprite contains four copies of the backdrop tile
+        if (backsprite == NULL)
+        {
+            backsprite = SDL_CreateRGBSurface(0, 2*48, 2*32, 32, 0xff, 0xff00, 0xff0000, 0);
+        }
+    }
     /* initialise screenstart(149), modesize(7), hbytes(6) */
     init_strengthcol();
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
-        glViewport(0,0,vduvar.xreso,vduvar.yreso);
+        glClearColor(0,0,0,0);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+#if SDL_VERSION_ATLEAST(2,0,1)
+        SDL_version linked;
+        SDL_GetVersion(&linked);
+        if (SDL_VERSIONNUM(linked.major,linked.minor,linked.patch) >= SDL_VERSIONNUM(2,0,1))
+        {
+            int glwidth, glheight;
+            SDL_GL_GetDrawableSize(Window, &glwidth, &glheight);
+
+            if (options.fullscreen)
+            {
+                int viewport_x, viewport_y, viewport_w, viewport_h;
+                if (((float)glwidth) / vduvar.width <= ((float)glheight) / vduvar.height)
+                {
+                    viewport_x = 0;
+                    viewport_w = glwidth;
+                    viewport_h = (glwidth * vduvar.height) / vduvar.width;
+                    viewport_y = (glheight - viewport_h) / 2;                }
+                else
+                {
+                    viewport_y = 0;
+                    viewport_h = glheight;
+                    viewport_w = (glheight * vduvar.width) / vduvar.height;
+                    viewport_x = (glwidth - viewport_w) / 2;
+                }
+                glViewport(viewport_x,viewport_y,viewport_w,viewport_h);
+            }
+            else
+            {
+                glViewport(0,0,glwidth,glheight);
+            }
+        }
+        else
+#endif
+        {
+            glViewport(0,0,vduvar.xreso,vduvar.yreso);
+        }
+
         glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	gluLookAt(vduvar.width/2,vduvar.height/2,-64,
@@ -939,15 +1004,10 @@ void vduread(asylum_options options)
 	glFrustum(vduvar.width/4,-vduvar.width/4,vduvar.height/4,-vduvar.height/4,32,256);
     }
     backspritedisp = backsprite;
-#else
-    wipescr = ConvertSurfaceToDisplayFormat(wipescr, 1);
-    backspritedisp = ConvertSurfaceToDisplayFormat(backsprite, 0);
-#endif
 }
 
 void backprep(char* backadr)
 {
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	Uint32 ba[64*128];
@@ -955,13 +1015,12 @@ void backprep(char* backadr)
 	    for (int i = 127/*95*/; i >= 0; i--)
 		ba[j*128+i] = palette[(unsigned char)backadr[(j%32)*48+(i%48)]];
 	glEnable(GL_TEXTURE_2D);
-	glGenTextures(1, batex);
+	if (*batex == 0) glGenTextures(1, batex);
 	glBindTexture(GL_TEXTURE_2D, *batex);
 	gluBuild2DMipmaps(GL_TEXTURE_2D, 4, 2*64, 2*32,
 			  GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, (char*)ba);
     }
     else
-#endif
     {
 	SDL_LockSurface(backsprite);
 	Uint32* ba = (Uint32*)backsprite->pixels;
@@ -970,9 +1029,6 @@ void backprep(char* backadr)
 		ba[j*96+i] = palette[(unsigned char)backadr[(j%32)*48+(i%48)]];
 	SDL_UnlockSurface(backsprite);
     }
-#ifdef DISABLE_OPENGL
-    SDL_BlitSurface(backsprite, NULL, backspritedisp, NULL);
-#endif
 }
 
 void startmessage()
@@ -997,7 +1053,6 @@ void swi_blitz_wait(int d)
 
 void swi_fastspr_clearwindow()
 {
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	glDisable(GL_TEXTURE_2D);
@@ -1006,7 +1061,6 @@ void swi_fastspr_clearwindow()
 	glRectf(0, 0, vduvar.width, vduvar.height);
     }
     else
-#endif
     SDL_FillRect(ArcScreen, NULL, 0);
 }
 
@@ -1016,7 +1070,6 @@ void swi_fastspr_setclipwindow(int x1, int y1, int x2, int y2)
 
     clip.x = x1; clip.y = y1;
     clip.w = x2-x1; clip.h = y2-y1;
-#ifndef DISABLE_OPENGL
     if (vduvar.opengl)
     {
 	double clipplane0[4] = { 1.0, 0, 0, 0};
@@ -1037,7 +1090,6 @@ void swi_fastspr_setclipwindow(int x1, int y1, int x2, int y2)
 	glEnable(GL_CLIP_PLANE3);
     }
     else
-#endif
     SDL_SetClipRect(ArcScreen, &clip);
 }
 
@@ -1089,7 +1141,6 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
         int wid = pp[0], hei = pp[1], xcen = pp[2], ycen = pp[3];
         sprites[i].x = xcen; sprites[i].y = ycen;
 	uint32_t* data;
-#ifndef DISABLE_OPENGL
 	if (vduvar.opengl)
 	{
 	    sprites[i].w = wid; sprites[i].h = hei;
@@ -1100,35 +1151,25 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
 	    for (int z = 0; z < 256*256; z++) data[z] = 0x0;
 	}
 	else
-#endif
 	{
         if (sprites[i].s != NULL)
         {
             SDL_FreeSurface(sprites[i].s);
         }
-#ifndef DISABLE_OPENGL
-	    sprites[i].s = SDL_CreateRGBSurface(SDL_HWSURFACE|SDL_SRCALPHA, wid, hei, 32,
+	    sprites[i].s = SDL_CreateRGBSurface(0, wid, hei, 32,
 						0xff, 0xff00, 0xff0000, 0xff000000);
-#else
-	    sprites[i].s = SDL_CreateRGBSurface(SDL_SWSURFACE, wid, hei, 32,
-						0xff, 0xff00, 0xff0000, 0);
-        SDL_SetColorKey(sprites[i].s, SDL_SRCCOLORKEY, COLORKEY);
-#endif
 	    SDL_LockSurface(sprites[i].s);
 	    data = (uint32_t*)sprites[i].s->pixels;
-	    for (int z = 0; z < wid*hei; z++) data[z] = COLORKEY;
+	    for (int z = 0; z < wid*hei; z++) data[z] = 0x0;
 	}
         for (uint32_t* q = p+2+hei; q < r; q++)
         {
             int x = ((0x0fffff00&read_littleendian(q))>>8)%320;
             int y = ((0x0fffff00&read_littleendian(q))>>8)/320;
             if ((y*wid+x < 0) || (y*wid+x >= wid*hei)) printf("%i: x=%i y=%i wid=%i hei=%i: bad idea\n", i, x, y, wid, hei);
-#ifndef DISABLE_OPENGL
             else if (vduvar.opengl) data[(y+1)*256/*wid*/+(x+1)] = palette[0xff&read_littleendian(q)];
-#endif
             else data[y*wid+x] = palette[0xff&read_littleendian(q)];
         }
-#ifndef DISABLE_OPENGL
 	if (vduvar.opengl)
 	{
 	    //uint32_t neighbours = maze_neighbours[i];
@@ -1153,52 +1194,7 @@ int initialize_sprites(char* start, fastspr_sprite* sprites, int max_sprites, ch
 	    free(data);
 	}
 	else
-#endif
     SDL_UnlockSurface(sprites[i].s);
-#ifdef DISABLE_OPENGL
-    #if defined(GP2X)
-    {
-        #define COLORKEYGP2X 0x0800
-
-        SDL_Surface *temp = SDL_CreateRGBSurface(SDL_HWSURFACE, wid, hei, 16, 0xf800, 0x07e0, 0x001f, 0);
-        if (temp != NULL)
-        {
-            int y;
-
-            SDL_SetColorKey(temp, SDL_SRCCOLORKEY, COLORKEYGP2X);
-
-            SDL_LockSurface(sprites[i].s);
-            SDL_LockSurface(temp);
-            for (y = 0; y < hei; y++)
-            {
-                int x;
-                uint32_t *src = (uint32_t *)(y * sprites[i].s->pitch + (uintptr_t)sprites[i].s->pixels);
-                uint16_t *dst = (uint16_t *)(y * temp->pitch + (uintptr_t)temp->pixels);
-                for (x = 0; x < wid; x++)
-                {
-                    if (src[x] == COLORKEY)
-                    {
-                        dst[x] = COLORKEYGP2X;
-                    }
-                    else
-                    {
-                        int colr = (src[x] >>  3) & 0x1f;
-                        int colg = (src[x] >> 10) & 0x3f;
-                        int colb = (src[x] >> 19) & 0x1f;
-                        int col16 = (colr << 11) | (colg << 5) | colb;
-                        dst[x] = (col16 == COLORKEYGP2X)?0:col16;
-                    }
-                }
-            }
-            SDL_UnlockSurface(temp);
-            SDL_UnlockSurface(sprites[i].s);
-
-            SDL_FreeSurface(sprites[i].s);
-            sprites[i].s = temp;
-        }
-    }
-    #endif
-#endif
     }
     return num_sprites;
 }

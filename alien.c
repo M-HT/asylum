@@ -17,7 +17,6 @@
 
 #include <math.h>
 #include "asylum.h"
-#include <SDL/SDL_mixer.h>
 
 #define _firerange (128<<8)
 #define _sleeprange (512<<8)

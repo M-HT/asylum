@@ -15,7 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <SDL/SDL_mixer.h>
 #include <math.h>
 #include "asylum.h"
 
@@ -79,16 +78,58 @@ Mix_Music* oggmusic[4];
 
 void init_audio()
 {
-    sound_available = !Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2,
-#if defined(PANDORA)
-    2048
-#elif defined(GP2X)
-    512
+    if (Mix_Init(0) < 0)
+    {
+        fprintf(stderr, "Sound disabled: initializing audio failed: %s\n", Mix_GetError());
+        sound_available = 0;
+        return;
+    }
+    atexit(Mix_Quit);
+
+#if defined(PANDORA) || defined(PYRA)
+    #define CHUNKSIZE 2048
 #else
-    1024
+    #define CHUNKSIZE 1024
 #endif
-    );
+
+#if SDL_VERSIONNUM(SDL_MIXER_MAJOR_VERSION, SDL_MIXER_MINOR_VERSION, SDL_MIXER_PATCHLEVEL) >= SDL_VERSIONNUM(2,0,2)
+    const SDL_version *link_version = Mix_Linked_Version();
+    if (SDL_VERSIONNUM(link_version->major, link_version->minor, link_version->patch) >= SDL_VERSIONNUM(2,0,2))
+    {
+        sound_available = !Mix_OpenAudioDevice(22050, MIX_DEFAULT_FORMAT, 2, CHUNKSIZE, NULL,
+        #ifdef SDL_AUDIO_ALLOW_SAMPLES_CHANGE
+            SDL_AUDIO_ALLOW_SAMPLES_CHANGE
+        #else
+            0
+        #endif
+        );
+    }
+    else
+#endif
+    {
+        sound_available = !Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, CHUNKSIZE);
+        if (sound_available)
+        {
+            int frequency, channels;
+            Uint16 format;
+
+            if (Mix_QuerySpec(&frequency, &format, &channels))
+            {
+                if ((frequency != 22050) ||
+                    (channels != 2) ||
+                    (format != MIX_DEFAULT_FORMAT)
+                   )
+                {
+                    sound_available = 0;
+                }
+            }
+            else sound_available = 0;
+
+            if (!sound_available) Mix_CloseAudio();
+        }
+    }
     if (!sound_available) fprintf(stderr, "Sound disabled: opening audio device failed: %s\n", Mix_GetError());
+    else atexit(Mix_CloseAudio);
 }
 
 void init_mulaw()
@@ -211,7 +252,7 @@ void soundclaim(int c, char samp, char initvol, int initpitch, int volslide, int
     Mix_HaltChannel(c);
     Mix_Volume(c, initvol);
     Mix_SetPanning(c, 254-stereo, stereo);
-    Mix_PlayChannel(c, chunk, 0);
+    Mix_PlayChannelTimed(c, chunk, 0, -1);
     //if (old_chunk) Mix_FreeChunk(old_chunk); XXX memory leak
 }
 
@@ -350,17 +391,18 @@ void init_sounds()
 
 void load_voice(int v, const char* filename)
 {
-    SDL_RWops* file = SDL_RWFromFile(filename, "r");
+    FILE* file = fopen(filename, "rb");
 
     if (file == NULL)
     {
         fprintf(stderr, "Loading sound effect %s failed\n", filename);
         return;
     }
-    SDL_RWseek(file, 0, SEEK_END);
-    int file_len = SDL_RWtell(file) /*-44*/;
-    SDL_RWseek(file, 0 /*44*/, SEEK_SET);
-    SDL_RWread(file, voice[v], 1, file_len);
+    fseek(file, 0, SEEK_END);
+    int file_len = ftell(file) /*-44*/;
+    fseek(file, 0 /*44*/, SEEK_SET);
+    fread(voice[v], 1, file_len, file);
+    fclose(file);
 }
 
 
@@ -387,9 +429,10 @@ void dumpmusic(int argc,char** argv)
     strncat(musicdumppath, ".au", 20);
     fprintf(stderr, "Dumping music ");
     //swi_bodgemusic_load(1,musicinputpath);
-    musicdumpfile = fopen(musicdumppath, "w");
-    SDL_RWops* tune = SDL_RWFromFile(musicinputpath, "r");
-    SDL_RWread(tune, tuneload+1, 1, 30000);
+    musicdumpfile = fopen(musicdumppath, "wb");
+    FILE* tune = fopen(musicinputpath, "rb");
+    fread(tuneload+1, 1, 30000, tune);
+    fclose(tune);
     initialize_music(1);
     if (argc > 3) if (!strcmp(argv[3], "--slower")) swi_sound_qtempo(0x980);
     fputs(".snd", musicdumpfile);
@@ -439,9 +482,10 @@ void swi_bodgemusic_load(int a, char* b)
     if (oggmusic[a]) Mix_FreeMusic(oggmusic[a]);
     oggmusic[a] = Mix_LoadMUS(name);
     if (oggmusic[a]) return;
-    SDL_RWops* tune = SDL_RWFromFile(b, "r");
-    //SDL_RWseek(tune, 8+256+64, SEEK_SET);
-    SDL_RWread(tune, tuneload+a, 1, 30000);
+    FILE* tune = fopen(b, "rb");
+    //fseek(tune, 8+256+64, SEEK_SET);
+    fread(tuneload+a, 1, 30000, tune);
+    fclose(tune);
 }
 void swi_sound_qtempo(int t)
 {

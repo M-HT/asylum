@@ -15,8 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
-#include <SDL/SDL.h>
-
 #include "asylum.h"
 
 extern fastspr_sprite charsadr[48];
@@ -36,17 +34,10 @@ int escapehandler()
     wipetexttab();
     message(36, 40-256, 0, 4, "¤ Game Interrupted ¤");
     message(32-256, 72, 4, 0, "Please select action");
-#if defined(GP2X)
-    message(36+256, 104, -4, 0, "Sel.  - Abandon game");
-    message(40-256, 136, 4, 0, "X    - lose this life");
-    message(40, 168+256, 0, -4, "Y    - Return to Game");
-    message(40, 200+256, 0, -4, "A    - Alter Options");
-#else
     message(46+256, 104, -4, 0, "ESC - Abandon game");
     message(40-256, 136, 4, 0, "Q    - lose this life");
     message(40, 168+256, 0, -4, "R    - Return to Game");
     message(40, 200+256, 0, -4, "O    - Alter Options");
-#endif
     showtext();
     osbyte_7c(); //clear escape
     for (int r9 = 64; swi_readescapestate() == 0;)
@@ -58,9 +49,7 @@ int escapehandler()
             r9--;
             switchbank();
             swi_fastspr_clearwindow();
-#if (DISPLAY_HWDOUBLEBUF)
             showchatscreen();
-#endif
             texthandler(1);
         }
         else if (need_redraw())
@@ -70,25 +59,13 @@ int escapehandler()
         }
         switch (osbyte_79_unicode(1))
         {
-#if defined(GP2X)
-            case 'x': case 'X':
-#else
             case 'q': case 'Q':
-#endif
                 loselife();
                 return 0;
-#if defined(GP2X)
-            case 'a': case 'A':
-#else
             case 'o': case 'O':
-#endif
                 adjustopt();
                 return 0;
-#if defined(GP2X)
-            case 'y': case 'Y':
-#else
             case 'r': case 'R':
-#endif
                 rejoin();
                 return 0;
         }
@@ -118,19 +95,11 @@ int options_menu(int gameon)
         showchatscreen();
         swi_fastspr_clearwindow();
         message(128, 48, 0, 0, "Options");
-#if defined(GP2X)
-        message(32, 96, 0, 0, "A. Define Controls");
-        message(32, 128, 0, 0, "B. Tune Game Options");
-        message(88, 224, 0, 0, "Start - Play");
-        if (gameon == 0) message(32, 160, 0, 0, "X. Choose Mental Zone");
-        else message(32, 160, 0, 0, "X. Save Position");
-#else
         message(32, 96, 0, 0, "1. Define Controls");
         message(32, 128, 0, 0, "2. Tune Game Options");
         message(88, 224, 0, 0, "Fire - Play");
         if (gameon == 0) message(32, 160, 0, 0, "3. Choose Mental Zone");
         else message(32, 160, 0, 0, "3. Save Position");
-#endif
 // if (savedornot==1) message(32,192,0,0,"4. Save Settings");
         showtext();
         swi_blitz_wait(20); //
@@ -166,22 +135,12 @@ void getzone()
     showchatscreen();
     message(88, 48, 0, 0, "Choose which");
     message(96, 68, 0, 0, "mental zone");
-#if defined(GP2X)
-    message(64, 96, 0, 0, "A. Ego");
-    message(64, 128, 0, 0, "B. Psyche");
-    message(64, 160, 0, 0, "X. Id");
-#else
     message(64, 96, 0, 0, "1. Ego");
     message(64, 128, 0, 0, "2. Psyche");
     message(64, 160, 0, 0, "3. Id");
-#endif
     if (checkifextend())
     {
-#if defined(GP2X)
-        message(64, 192, 0, 0, "Y. Saved Game");
-#else
         message(64, 192, 0, 0, "4. Saved Game");
-#endif
         r0 = 4;
     }
     else r0 = 3;
@@ -215,9 +174,7 @@ void choosecontrol()
     wipetexttab();
     showchatscreen();
     message(96, 48, 0, 0, "Controls");
-#if defined(GP2X)
-    message(64, 96, 0, 0, "A. Set Keys");
-#elif defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
     message(64, 96, 0, 0, "1. Set Keys");
 #else
     message(64, 96, 0, 0, "1. Keyboard");
@@ -225,7 +182,7 @@ void choosecontrol()
 #endif
     showtext();
     switch (readopt(
-#if defined(GP2X) || defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
         1
 #else
         2
@@ -279,35 +236,25 @@ void tunegame()
     message(96, 48, 0, 0, "Tune Game");
     if (sound_available)
     {
-#if defined(GP2X)
-        message(64, 96, 0, 0, "A. Sound System");
-        message(64, 128, 0, 0, "B. Sound Volume");
-#else
         message(64, 96, 0, 0, "1. Sound System");
         message(64, 128, 0, 0, "2. Sound Volume");
-#endif
     }
     else
     {
         message(48, 96, 0, 0, "\x11");
         message(48, 128, 0, 0, "\x11");
-#if defined(GP2X)
-        message(64, 96, 0, 0, "A.");
-        message(64, 128, 0, 0, "B.");
-#else
         message(64, 96, 0, 0, "1.");
         message(64, 128, 0, 0, "2.");
-#endif
         message(115, 101, 0, 0, "Sound Not");
         message(112, 123, 0, 0, "Available");
     }
-#ifndef DISABLE_OPENGL
+#if !defined(PANDORA) && !defined(PYRA)
     message(64, 160, 0, 0, "3. Video System");
 #endif
     showtext();
     while (1)
         switch (readopt(
-#ifndef DISABLE_OPENGL
+#if !defined(PANDORA) && !defined(PYRA)
         3
 #else
         2
@@ -325,17 +272,13 @@ void tunegame()
                 tunevolume(); return;
             }
             else break;
-#ifndef DISABLE_OPENGL
+#if !defined(PANDORA) && !defined(PYRA)
         case  3: tunespeed(); return;
 #endif
         }
 }
 
-#if defined(GP2X)
-char sound1[] = "-A. No Sound";
-char sound2[] = "-B. Sound";
-char sound3[] = "-X. Sound";
-#elif defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
 char sound1[] = "-1. No Sound";
 char sound2[] = "-2. Sound";
 char sound3[] = "-3. Sound";
@@ -362,23 +305,19 @@ void tunesound()
         message(32, 80, 0, 0, sound2);
         message(32, 100, 0, 0, sound3);
         message(80, 120, 0, 0, "and music");
-#if !defined(GP2X) && !defined(PANDORA)
+#if !defined(PANDORA) && !defined(PYRA)
         message(32, 140, 0, 0, sound4);
         message(32, 160, 0, 0, sound5);
         message(32, 180, 0, 0, sound6);
         message(32, 200, 0, 0, sound7);
 #endif
-#if defined(GP2X)
-        message(96, 220, 0, 0, "Select - Exit");
-#else
         message(96, 220, 0, 0, "ESC - Exit");
-#endif
         swi_blitz_wait(0);
         swi_fastspr_clearwindow();
         showtext();
 
         switch (readopt(
-#if defined(GP2X) || defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
             3
 #else
             7
@@ -417,22 +356,14 @@ void tunevolume()
     if (sound_available && (options.soundtype == 2)) swi_bodgemusic_start(1, 0);
     swi_bodgemusic_volume(options.musicvol);
     message(80, 32, 0, 0, "Change volume");
-#if defined(GP2X)
-    message(48, 96, 0, 0, "A. Louder effects");
-    message(48, 116, 0, 0, "B. Quieter effects");
-    message(48, 136, 0, 0, "X. Louder music");
-    message(48, 156, 0, 0, "Y. Quieter music");
-    message(96, 220, 0, 0, "Select - Exit");
-#else
     message(48, 96, 0, 0, "1. Louder effects");
     message(48, 116, 0, 0, "2. Quieter effects");
     message(48, 136, 0, 0, "3. Louder music");
     message(48, 156, 0, 0, "4. Quieter music");
-#if !defined(PANDORA)
+#if !defined(PANDORA) && !defined(PYRA)
     message(48-14, 176, 0, 0, tunevol1);
 #endif
     message(96, 220, 0, 0, "ESC - Exit");
-#endif
     do
     {
        //tunevolumeloop:
@@ -443,7 +374,7 @@ void tunevolume()
         swi_fastspr_clearwindow();
         showtext();
         int r0 = readopt(
-#if defined(GP2X) || defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
             4
 #else
             5
@@ -502,24 +433,20 @@ void tunespeed()
             wipetexttab();
             if (options.fullscreen == 1) speed1[0] = 16;
             else speed1[0] = 17;
-#ifndef DISABLE_OPENGL
             if (options.opengl == 1) speed2[0] = 16;
             else
-#endif
             speed2[0] = 17;
             if (options.scale == 2) speed3[0] = 16;
             else speed3[0] = 17;
             message(96, 48, 0, 0, "Tune Video");
             message(32, 96, 0, 0, speed1);
             message(32, 120, 0, 0, speed2);
-#ifndef DISABLE_OPENGL
 	    if (options.opengl)
 	    {
 		message(32, 144, 0, 0, sizedesc[options.size&3]);
 		message(32, 168, 0, 0, speed3);
 		message(80, 188, 0, 0, "-experimental-");
 	    }
-#endif
             message(96, 220, 0, 0, "ESC - Exit");
 
             swi_blitz_wait(0);
@@ -534,10 +461,8 @@ void tunespeed()
             }
             else if (r0 == 2)
             {
-#ifndef DISABLE_OPENGL
                 options.opengl ^= 1;
 		if (options.opengl == 0)
-#endif
 		{
 		    options.size = 0;
 		    options.scale = 1;
@@ -548,9 +473,7 @@ void tunespeed()
 		getlevelsprites();
 		break;
             }
-#ifndef DISABLE_OPENGL
 	    else if (options.opengl == 0);
-#endif
             else if (r0 == 3)
             {
                 options.size = (options.size+1) % 4;
@@ -615,25 +538,9 @@ int readopt(int maxopt)
             osbyte_7c(); // clear escape
             return -1;
         }
-#if defined(GP2X)
-        if ((r1 == 'a' || r1 == 'A') && maxopt >= 1)
-            return 1;
-        if ((r1 == 'b' || r1 == 'B') && maxopt >= 2)
-            return 2;
-        if ((r1 == 'x' || r1 == 'X') && maxopt >= 3)
-            return 3;
-        if ((r1 == 'y' || r1 == 'Y') && maxopt >= 4)
-            return 4;
-        if ((r1 == 'l' || r1 == 'L') && maxopt >= 5)
-            return 5;
-        if ((r1 == 'r' || r1 == 'R') && maxopt >= 6)
-            return 6;
-        if (osbyte_81(-SDLK_SPACE) == 0xff)
-#else
         if (r1 >= '0' && r1 <= '0' + maxopt)
             return r1 - '0';
         if (osbyte_81(options.firekey) == 0xff)
-#endif
             return 0;
         if (need_redraw())
         {
@@ -663,11 +570,7 @@ int prelude()
     message(2028, _x+7*24, 0, _v, "the rogue brain cells");
     message(2036, _x+8*24, 0, _v, "in his mind and shut");
     message(2100, _x+9*24, 0, _v, "Them down?");
-#if defined(GP2X)
-    message(2096, _x+10*24, 0, _v, "PRESS Start");
-#else
     message(2096, _x+10*24, 0, _v, "PRESS SPACE");
-#endif
     message(2088, _x+12*24, 0, _v, "Cheat Mode!!!");
     message(2028, _x+14*24, 0, _v, "F1, F2 Get Weapons");
     message(2028, _x+15*24, 0, _v, "F3 - Restore Strength");
@@ -699,8 +602,8 @@ int prelude()
         if (readmousestate()&2)
         {
            //gocheat:
-            if (osbyte_81(-SDLK_LALT) != 0xff) return cheatpermit;
-            if (osbyte_81(-SDLK_RALT) != 0xff && osbyte_81(-SDLK_MODE) != 0xff) return cheatpermit;
+            if (osbyte_81(-SDL_SCANCODE_LALT) != 0xff) return cheatpermit;
+            if (osbyte_81(-SDL_SCANCODE_RALT) != 0xff && osbyte_81(-SDL_SCANCODE_MODE) != 0xff) return cheatpermit;
             cheatpermit = 1;
             scroll = 1024;
         }
@@ -798,9 +701,9 @@ void showerrorok()
 
 int errorwait()
 {
-    if (osbyte_81(-74) != 0xff)
+    if (osbyte_81(-SDL_SCANCODE_J) != 0xff)
        //loopb9:
-        while (osbyte_81(-61) != 0xff)
+        while (osbyte_81(-SDL_SCANCODE_EQUALS) != 0xff)
             if (swi_readescapestate())
             {
                 wipetexttab(); return 0;
@@ -831,11 +734,7 @@ int showhighscore()
     loadscores(highscorearea, options.mentalzone);
     updatehst();
     showhst();
-#if defined(GP2X)
-    message(96, 224, 0, 0, "press start");
-#else
     message(96, 224, 0, 0, "press fire");
-#endif
     releaseclip();
     showtext();
     readopt(0);
@@ -879,11 +778,7 @@ void updatehst()
         for (int i = 0; i < 3; i++) r10[i] = options.initials[i];
         for (int r8 = 3; r8 > 0; r8--, r10++)
         {
-#if defined(GP2X)
-            while (osbyte_81(0) != SDLK_SPACE)
-#else
             while (osbyte_81(0) != -options.firekey)
-#endif
             {
                //scorekeyloop:
 //if (--r9<0) goto scoreexit;

@@ -17,12 +17,10 @@
 
 #include "platform.h"
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_mixer.h>
-#ifndef DISABLE_OPENGL
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
-#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -93,9 +91,7 @@
 const int fullpitch = 0x2155;
 
 typedef struct fastspr_sprite { int x; int y; int w; int h;
-#ifndef DISABLE_OPENGL
                                 GLuint t; int texw; int texh;
-#endif
                                 SDL_Surface* s; } fastspr_sprite;
 
 typedef struct board { int first_int; int width; int height;
@@ -132,9 +128,7 @@ typedef struct asylum_options
 {
     char soundtype, soundquality, explospeed, gearchange;
     char fullscreen;
-#ifndef DISABLE_OPENGL
     char opengl;
-#endif
     char size, scale, mentalzone;
     int leftkey, rightkey, upkey, downkey, firekey;
     char soundvol, musicvol, joyno;
@@ -466,9 +460,6 @@ void screensave();
 void getvars();
 void init_palette();
 void vduread(asylum_options);
-#if defined(GP2X)
-void Change_HW_Audio_Volume (int amount);
-#endif
 int main(int argc, char** argv);
 void load_voices(int dumpmusic);
 void init_sounds();

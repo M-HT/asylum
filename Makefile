@@ -2,13 +2,26 @@ HOST=generic
 #HOST=mingw
 #HOST=haiku
 
+#TARGET=pandora
+#TARGET=pyra
+
 CC=g++
 RM=rm
 CFLAGS= -O3 -Wall
 COPTS=  $(CFLAGS) -funsigned-char \
 	-DRESOURCEPATH=\"$(INSTALLRESOURCEPATH)\" \
 	-DSCOREPATH=\"$(INSTALLHISCORES)\"
-LIBS= -lm -lSDL -lSDL_mixer -lGL -lGLU
+LIBS= -lm -lSDL2 -lSDL2_mixer -lGL -lGLU
+
+ifeq "$(TARGET)" "pandora"
+	CC=pandora-g++
+	COPTS+=-pipe -march=armv7-a -mcpu=cortex-a8 -mtune=cortex-a8 -mfpu=vfpv3 -mfloat-abi=softfp -mthumb -DPANDORA -ffast-math -I${PNDSDK}/usr/include -L${PNDSDK}/usr/lib´
+	LIBS+=-s
+endif
+ifeq "$(TARGET)" "pyra"
+	COPTS+=-march=armv7ve+simd -mcpu=cortex-a15 -mtune=cortex-a15 -mfpu=neon-vfpv4 -mfloat-abi=hard -mthumb -DPYRA
+endif
+
 SRCS= alien.c asylum.c bullet.c file.c keyboard.c maze.c menus.c player.c projectile.c sound.c vdu.c
 
 RESOURCES=data/Resources data/Ego data/Psyche data/Id data/Voices
@@ -33,7 +46,7 @@ ifeq ($(HOST),haiku)
 	INSTALLRESOURCEPATH=/boot/common/games/asylum/data
 	INSTALLHISCORES=/boot/common/games/asylum/hiscores
 	OS_SOURCE=asylum_haiku.c
-	LIBS=-lSDL_mixer -lSDL -lbe -lroot -ldevice -lgame -lGL -ltextencoding -lmedia
+	LIBS=-lSDL2_mixer -lSDL2 -lbe -lroot -ldevice -lgame -lGL -ltextencoding -lmedia
 endif
 ifeq ($(HOST),mingw)
 	INSTALLBIN="c:/program files/asylum/asylum.exe"
@@ -42,7 +55,7 @@ ifeq ($(HOST),mingw)
 	OS_SOURCE=asylum_win.c
 	RM=del
 	EXE=.exe
-	LIBS=-lm -lmingw32 -lSDL_mixer -lSDLmain -lSDL -mwindows
+	LIBS=-lm -lmingw32 -lSDL2_mixer -lSDL2main -lSDL2 -mwindows
 endif
 ifeq ($(HOST),generic)
 	INSTALLBIN=/usr/games/asylum

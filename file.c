@@ -46,7 +46,7 @@ FILE* find_game(int op)
 {
     char fullname[240] = "";
 
-#if defined(GP2X) || defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
 	strcpy(fullname, "..");
 #else
     char* home = getenv("HOME");
@@ -69,7 +69,7 @@ FILE* find_config(int op)
 {
     char fullname[240] = "";
 
-#if defined(GP2X) || defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
 	strcpy(fullname, "..");
 #else
     char* home = getenv("HOME");
@@ -334,7 +334,7 @@ int swi_osfile(int op, const char* name, char* start, char* end)
         f = fopen(name, "wb");
         for (char* i = start; i < end; i++) fputc(*i, f);
         fclose(f);
-#if defined(GP2X) || defined(PANDORA)
+#if defined(PANDORA) || defined(PYRA)
         sync();
 #endif
         return 0;

@@ -52,7 +52,7 @@ void soundclaimmaybe(int r0, char r1, char r2, int r3, int r4, int r5, char r6, 
 void soundclaimexplo(int r0, char r1, char r2, int r3, int r4, int r5, char r6, int r7, Mix_Chunk* chunk)
 {
 //soundtab=soundtabofs+(r0<<soundtabshift);
-   bidforexplo:
+   //bidforexplo:
     if ((!Mix_Playing(3)) || (Mix_GetChunk(3)->volume < r2)) soundclaim(3, r1, r2, r3, r4, r5, r6, r7, chunk);
     else if ((!Mix_Playing(4)) || (Mix_GetChunk(4)->volume < r2)) soundclaim(4, r1, r2, r3, r4, r5, r6, r7, chunk);
     else if ((!Mix_Playing(5)) || (Mix_GetChunk(5)->volume < r2)) soundclaim(5, r1, r2, r3, r4, r5, r6, r7, chunk);
@@ -125,7 +125,7 @@ Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, ch
             {
                 fclose(f);
 
-                for (int i = 0; i < mc->alen / 4; i++) {
+                for (unsigned int i = 0; i < mc->alen / 4; i++) {
                     pstereo[2*i] = pstereo[2*i + 1] = pmono[i];
                 }
 
@@ -138,31 +138,35 @@ Mix_Chunk* make_sound(char samp, int initpitch, int volslide, int pitchslide, ch
     int time = 0;
     double ps = ((Sint16)(pitchslide&0xffff))*22/22050.0;
     double vs = ((Sint16)(volslide&0xffff))/22050.0;
-    Sint16 psmax = pitchslide>>16;
+    //Sint16 psmax = pitchslide>>16;
     double matching = 0;
     fprintf(stderr, "."); fflush(stderr);
-    for (int i = 0; i < numsamples*2*sizeof(Uint16); i += 4, time++, s += 2)
+    for (unsigned int i = 0; i < numsamples*2*sizeof(Uint16); i += 4, time++, s += 2)
     {
         Uint16 mono = 0;
 
         double pitch = initpitch+ps*time; // XXX pitchslide
         //if ((ps>0)&&(pitch>psmax)) pitch=psmax;
         //if ((ps<0)&&(pitch<psmax)) pitch=psmax;
-        int off = time;
+        //int off = time;
         double old_sample_rate = 500.0*pow(2, pitch/4096.0);
         matching += old_sample_rate/22050;
         for (int j = (int)matching-32; j <= (int)matching+32; j++)
         {
             if ((j < 0)) continue;
             int jj = j;
-            uint32_t len = read_littleendian(((uint32_t*)voice[samp])+6);
-            uint32_t gap = read_littleendian(((uint32_t*)voice[samp])+7); // ???
-            uint32_t rep = read_littleendian(((uint32_t*)voice[samp])+8);
-            if (jj >= len) if (rep == 0) continue;else jj = (len-rep)+((jj-len)%rep);double w;
-            if (jj >= len-gap)
-                w = ((jj-(len-gap))*(double)mulaw[voice[samp][jj+44-rep]]
-                     +(len-jj)*(double)mulaw[voice[samp][jj+44]])/gap/4;
-            else w = mulaw[voice[samp][jj+44]]/4;
+            uint32_t len = read_littleendian(((uint32_t*)voice[(unsigned char)samp])+6);
+            uint32_t gap = read_littleendian(((uint32_t*)voice[(unsigned char)samp])+7); // ???
+            uint32_t rep = read_littleendian(((uint32_t*)voice[(unsigned char)samp])+8);
+            if ((unsigned int)jj >= len) {
+                if (rep == 0) continue;
+                else jj = (len-rep)+((jj-len)%rep);
+            }
+            double w;
+            if (jj >= (int32_t)(len-gap))
+                w = ((jj-(len-gap))*(double)mulaw[(unsigned char)voice[(unsigned char)samp][jj+44-rep]]
+                     +(len-jj)*(double)mulaw[(unsigned char)voice[(unsigned char)samp][jj+44]])/gap/4;
+            else w = mulaw[(unsigned char)voice[(unsigned char)samp][jj+44]]/4;
             double vscale = 0x7f+vs*time;
             if (vscale > 0xff) vscale = 0xff;
             if (vscale > 0) w *= (vscale/0x7f);else w = 0;
@@ -201,7 +205,7 @@ void soundclaim(int c, char samp, char initvol, int initpitch, int volslide, int
     //int* argv = (int*)vargv;
     //int c = argv[0]; char samp = argv[1]; char initvol = argv[2]; int initpitch = argv[3];
     //int volslide = argv[4]; int pitchslide = argv[5]; char frames = argv[6]; int stereo = argv[7];
-    Mix_Chunk* old_chunk = Mix_GetChunk(c);
+    //Mix_Chunk* old_chunk = Mix_GetChunk(c);
     Mix_Chunk* chunk = static_chunk ? static_chunk : make_sound(samp, initpitch, volslide, pitchslide, frames);
 
     Mix_HaltChannel(c);
@@ -284,12 +288,12 @@ void sdl_music_hook(void* udata, Uint8* stream, int len)
                    while (jj>=6960+1000) jj-=6960;
                    else
                    if (jj>=8192) continue;*/
-                if (jj >= len) jj = rep ? ((len-rep)+((jj-len)%rep)) : 0;
+                if ((unsigned int)jj >= len) jj = rep ? ((len-rep)+((jj-len)%rep)) : 0;
                 double w;
-                if (jj >= len-gap)
-                    w = ((jj-(len-gap))*(double)mulaw[voice[m->inst[v]][jj+44-rep]]
-                         +(len-jj)*(double)mulaw[voice[m->inst[v]][jj+44]])/gap/4;
-                else w = mulaw[voice[m->inst[v]][jj+44]]/4;
+                if (jj >= (int32_t)(len-gap))
+                    w = ((jj-(len-gap))*(double)mulaw[(unsigned char)voice[m->inst[v]][jj+44-rep]]
+                         +(len-jj)*(double)mulaw[(unsigned char)voice[m->inst[v]][jj+44]])/gap/4;
+                else w = mulaw[(unsigned char)voice[m->inst[v]][jj+44]]/4;
                 double x = M_PI*(j-matching);
                 if (x == 0) s[v&1] += (Sint16)(w/1.3);
                 else s[v&1] += (Sint16)(w*sinf(x)/(1.3*x));
@@ -449,7 +453,7 @@ void swi_sound_control(int c, int a, int p, int d)
 }
 int swi_sound_speaker(int s)
 {
-    ;
+    return 0;
 }
 void swi_stasis_link(int a, int b)
 {

@@ -125,7 +125,7 @@ void switchbank()
 void fspplotscaled(fastspr_sprite* sprites, char n, float x, float y,
 		   float xs, float ys)
 {
-    fastspr_sprite sprite = sprites[(char)n];
+    fastspr_sprite sprite = sprites[(unsigned char)n];
     static SDL_Rect pos;
     float w = sprite.w*xs, h = sprite.h*ys;
     float posx = x-sprite.x*xs, posy = y-sprite.y*ys;
@@ -203,7 +203,7 @@ void cenplotdying(fastspr_sprite* sprites, char n, int x, int y, int r5)
                 if (fsphx > vduvar.gamex)
                     fspplot(sprites, n, fsplx-r8, fsphy+r8);
         }
-   nodyingtop:
+   //nodyingtop:
     fsphy = vduvar.gamey+vduvar.gameh;
     fsplx = vduvar.gamex;
     fsply = r2;
@@ -222,7 +222,7 @@ void cenplotdying(fastspr_sprite* sprites, char n, int x, int y, int r5)
                 if (fsphx > fsplx)
                     fspplot(sprites, n, fsplx-r8, fsply-r8);
         }
-   nodyingbot:
+   //nodyingbot:
     writeclip();
 }
 
@@ -283,12 +283,12 @@ void message(int x, int y, float xv, float yv, const char* a)
         int r9;
         for (r9 = _textno; r9 > 0; r9--)
         {
-           loopa8:
+           //loopa8:
             if (r11->count == 0) break;
             r11++;
         }
         if (r9 == 0) return;
-       messageproc:
+       //messageproc:
         r11->count = time; r11->x = x<<8; r11->y = y<<8;
         r11->dx = (int)(xv*256); r11->dy = (int)(yv*256);
         if (strlen(b) > 58) exit(printf("Bad string %s", b));
@@ -301,7 +301,7 @@ void wipetexttab()
     char* r10 = (char*)texttabofs;
 
     for (int r3 = _textno*_textlen; r3 > 0; r3 -= 1)
-       loopa5:
+       //loopa5:
         *(r10++) = 0;
 }
 
@@ -330,9 +330,7 @@ void texthandler(int do_animation)
         int YyY = r11->y>>8;
         for (char* r10 = r11->text; *r10 != 0; r10++)
         {
-            char r0;
-           loopa7:
-            r0 = *r10;
+           //loopa7:
             if ((*r10-1) < 48)  // only plot known characters (charsadr is [48])
                 fspplot(charsadr, *r10-1, XxX, YyY);
             XxX += 14;
@@ -340,7 +338,7 @@ void texthandler(int do_animation)
             if (*r10 > 43) XxX -= 6;
         }
     }
-   textdone:;
+   //textdone:;
 //textdelete: r11->count = 0;
 }
 
@@ -390,7 +388,7 @@ void mazeplot(int xpos, int ypos)
 
     for (; /*ins2:*/ (r5 < vduvar.yblocks+2) && (r7 < boardadr->height); r5++, r7++)
     {
-       l2:;
+       //l2:;
         int r4 = 0, r6 = ((xpos>>8)-(vduvar.xblocks*8))>>4;
         if (r6 < 0)
         {
@@ -399,12 +397,12 @@ void mazeplot(int xpos, int ypos)
 
         for (; /*ins1:*/ (r4 < vduvar.xblocks+3)&(r6 < boardadr->width); /*skip1:*/ r4++, r6++)
         {
-           l1:
+           //l1:
             r0 = *(boardadr->contents+boardwidth*r7+r6);
             draw_block(blockadr, r0, r4*vduvar.sprw+r8, r5*vduvar.sprh+r9, 0);
         }
     }
-   skip2:;
+   //skip2:;
 }
 
 #ifndef DISABLE_OPENGL
@@ -418,13 +416,13 @@ void backdrop(int xpos, int ypos)
 
     int r3 = ((xpos>>8)-(xpos>>10)+3072-768); // parallax
     int r2 = (44+48-(r3%48))%48;
-    float float_r3 = (xpos*3.0/1024)+3072-768;
+    //float float_r3 = (xpos*3.0/1024)+3072-768;
     float float_r2 = fmod(44+48-fmod(r3,48.0),48.0);
 
     int r4 = 0x1f&((ypos>>8)-(ypos>>10)); // parallax
     float float_r4 = fmod(ypos*3.0/1024,32.0);
 
-   modpos:
+   //modpos:
     back_to_blit.x = ((48-r2)*vduvar.backw)/48; back_to_blit.y = (r4*vduvar.backh)/32;
     back_to_blit.w = vduvar.backw; back_to_blit.h = vduvar.backh;
 
@@ -474,11 +472,11 @@ void plotbonus(char bonusctr, int16_t bonusreplot)
     if (bonusctr != 0)
         fspplot(blockadr, (bonusctr+15 > _bonuslow+12) ? 0 : (bonusctr+15),
                 vduvar.bonusx, vduvar.bonusy-vduvar.bonush+r3);
-   nosecond:
+   //nosecond:
     if (bonusctr != 12)
         fspplot(blockadr, (bonusctr+17 > _bonuslow+12) ? 0 : (bonusctr+17),
                 vduvar.bonusx, vduvar.bonusy+vduvar.bonush+r3);
-   nothird:
+   //nothird:
     writeclip(); // reset the clip window
 }
 
@@ -487,7 +485,7 @@ GLuint redtex[1], greytex[1];
 #endif
 void showstrength(int r3)
 {
-   nolager:;
+   //nolager:;
     if (r3 > _strengthmax) r3 = _strengthmax;
     if (r3 < 0) r3 = 0;
     releaseclip();
@@ -591,18 +589,18 @@ void showscore(char plscore[8])
             i = 2;
         }
     }
-   score10mil:
+   //score10mil:
     /*r7=0*/;
 
     for (; i < 8; i++)
     {
-       loop36:
+       //loop36:
         if (plscore[i] <= 10)
         {
             fspplot(charsadr, plscore[i], x, y);
             /*r8=1*/;
         }
-       scoreskip:
+       //scoreskip:
         x += _charwidth;
     }
 }
@@ -630,9 +628,11 @@ void releaseclip()
 
 void clearkeybuf()
 {
-    do clearkbloop:;
+    do //clearkbloop:
+        ;
     while (osbyte_79(0) != -1);
-    do clearkbloop2 :;
+    do //clearkbloop2 :
+        ;
     while (osbyte_81(1) != -1);
 }
 
@@ -788,7 +788,7 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
     Uint32* r9;
 
 #ifndef DISABLE_OPENGL
-    Uint32* data;
+    Uint32* data = NULL;
 
     if (vduvar.opengl)
     {
@@ -812,27 +812,31 @@ void decomp(fastspr_sprite* DecompScreen, char* r11)
     r11 += 68;
     while (r9 > r10) // > or >=?
     {
-       loopb4:;
+       //loopb4:;
         char r0 = *(r11++);
         if (r0&0x80)
         {
-           sequence:; Uint32 s = palette[0xff&*(r11++)];
+           //sequence:;
+           Uint32 s = palette[0xff&*(r11++)];
             for (int r3 = (r0&0x7f)+2; (r9 > r10) && (r3 != 0); r3--)
 	    {
-               loopb6: *(r10++) = s;
+               //loopb6:
+               *(r10++) = s;
 #ifndef DISABLE_OPENGL
 	        if (vduvar.opengl) if (((r10-data)%512) == 320)  r10 += (512-320);
 #endif
 	    }
         }
-        else pattern: for (int r3 = (r0&0x7f)+1; (r9 > r10) && (r3 != 0); r3--)
+        else //pattern:
+        for (int r3 = (r0&0x7f)+1; (r9 > r10) && (r3 != 0); r3--)
 	    {
-               loopb5: *(r10++) = palette[0xff&*(r11++)];
+               //loopb5:
+               *(r10++) = palette[0xff&*(r11++)];
 #ifndef DISABLE_OPENGL
 	        if (vduvar.opengl) if (((r10-data)%512) == 320)  r10 += (512-320);
 #endif
 	    }
-       decompdone:;
+       //decompdone:;
     }
     DecompScreen->w = vduvar.width;  DecompScreen->h = vduvar.height;
 #ifndef DISABLE_OPENGL
@@ -949,7 +953,7 @@ void backprep(char* backadr)
 	Uint32 ba[64*128];
 	for (int j = 63; j >= 0; j--)
 	    for (int i = 127/*95*/; i >= 0; i--)
-		ba[j*128+i] = palette[backadr[(j%32)*48+(i%48)]];
+		ba[j*128+i] = palette[(unsigned char)backadr[(j%32)*48+(i%48)]];
 	glEnable(GL_TEXTURE_2D);
 	glGenTextures(1, batex);
 	glBindTexture(GL_TEXTURE_2D, *batex);
@@ -963,7 +967,7 @@ void backprep(char* backadr)
 	Uint32* ba = (Uint32*)backsprite->pixels;
 	for (int j = 63; j >= 0; j--)
 	    for (int i = 95; i >= 0; i--)
-		ba[j*96+i] = palette[backadr[(j%32)*48+(i%48)]];
+		ba[j*96+i] = palette[(unsigned char)backadr[(j%32)*48+(i%48)]];
 	SDL_UnlockSurface(backsprite);
     }
 #ifdef DISABLE_OPENGL

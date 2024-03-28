@@ -55,9 +55,9 @@ void project()       // the projectile handler
 
     for (; i > 0; i--, r11++)
     {
-       loop41:
+       //loop41:
         if (r11->type == 0) continue;
-       foundproj:
+       //foundproj:
         r11->x += r11->dx; r11->y += r11->dy;
         if ((r11->x <= xlowlim) || (xposmax <= r11->x) || (r11->y <= ylowlim) || (yposmax <= r11->y))
         {
@@ -70,7 +70,7 @@ void project()       // the projectile handler
             r11->dx += r11->dx>>4;  r11->dy += r11->dy>>4;
         }
 
-       projnoacc:
+       //projnoacc:
         if (r11->dx > _speedlim) r11->dx = _speedlim;
         if (r11->dx < -_speedlim) r11->dx = -_speedlim;
         if (r11->dy > _speedlim) r11->dy = _speedlim;
@@ -79,12 +79,12 @@ void project()       // the projectile handler
         r11->flags -= PROJ_TTL; // decrement the life counter
         if (r11->flags < 0)     // out of time
         {
-           projdestroy:
+           //projdestroy:
             if (r11->flags&PROJ_SPLIT)
             {
                 projsplit(r11); continue;
             }
-           projoffscr:
+           //projoffscr:
             r11->type = 0;
             continue;
         }
@@ -109,12 +109,12 @@ void project()       // the projectile handler
             //    projhit:  // hit a block
             ((r1 >= _translowlim) && (r1 <= _transhighlim) && !(r11->flags&PROJ_ATOM)))
         {
-           projhitins:
+           //projhitins:
             if (masterplotal == 0) continue;
             relplot(blokeadr, r11->type, r11->x, r11->y);
             continue;
         }
-       projhitcont:
+       //projhitcont:
         if ((r1 >= _spcrumblelowlim) && (r1 <= _spcrumblehighlim)
             && ((r11->type == _projsmallno+2) || (r11->flags&PROJ_WEIRDSPLIT)))
           // hack, better than original && (plweapontype == 5)
@@ -122,7 +122,7 @@ void project()       // the projectile handler
             *r0 = 0;
             explogo(r11->x, r11->y, 0, 0, 0, 0, 0);
         }
-       nospcrumble:
+       //nospcrumble:
         r11->type = 0;
         destroy(r0);
         if (r11->flags&PROJ_ATOM)
@@ -163,7 +163,7 @@ void projsplit(projent* r11)
         rocketsplit(r11); return;
     }
 
-    int r7 = r11->type, r4, r6;
+    int r4, r6;
 
     if (flags&PROJ_FIVEWAY)
     {
@@ -186,7 +186,7 @@ void projsplit(projent* r11)
 
     for (; r9 > 0; r9--)
     {
-       loop76:
+       //loop76:
         makeproj(x, y, dx+r10[0], dy+r10[1], r4, r6);
         r10 += 2;
     }
@@ -213,13 +213,13 @@ void rocketsplit(projent* r11)
     {
         rocketpair(r11); return;
     }
-   rocketburst:;
+   //rocketburst:;
 
     int r5 = (64*PROJ_TTL)|PROJ_ROCKET|PROJ_EXPLO;
     int* r10 = rocketbursttab;
     for (int r9 = 5; r9 > 0; r9--)
     {
-       loop77:
+       //loop77:
         makeproj(x, y, dx+r10[0], dy+r10[1], _projsmallno+3, r5);
         r10 += 2;
     }
@@ -264,7 +264,7 @@ int makeproj(int x, int y, int dx, int dy, int type, int flags)
 
     for (; r9 > 0; r9--)
     {
-       loop42:
+       //loop42:
         if (r10->type == 0) return foundmakeproj(r10, r8, x, y, dx, dy, type, flags);
         r10++;
         r8++;
@@ -272,7 +272,7 @@ int makeproj(int x, int y, int dx, int dy, int type, int flags)
     r10 = projadr;
     for (r9 = projctr; r9 > 0; r9--)
     {
-       loop43:
+       //loop43:
         if (r10->type == 0) return foundmakeproj(r10, r8, x, y, dx, dy, type, flags);
         r10++;
         r8++;
@@ -286,8 +286,8 @@ int foundmakeproj(projent* r10, int r8, int x, int y, int dx, int dy, int type, 
     r10->type = type; r10->x = x; r10->y = y;
     r10->dx = dx; r10->dy = dy; r10->flags = flags;
 
-    for (r8++; r8 >= _projno; r8 -= _projno)
-       loop45:;
+    //for (r8++; r8 >= _projno; r8 -= _projno)
+       //loop45:;
     projctr = r8;
     return 0;
 }
@@ -299,7 +299,7 @@ void initprojtab()
     projctr = 0;
     for (int r9 = _projno; r9 > 0; r9--)
     {
-       loop44:
+       //loop44:
         *(int*)r10 = 0;
         r10++;
     }

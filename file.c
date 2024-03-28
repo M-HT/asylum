@@ -357,6 +357,8 @@ int swi_osfile(int op, const char* name, char* start, char* end)
         for (char* i = start; !feof(f); i++) *i = fgetc(f);
         fclose(f);
         return 0;
+    default:
+        return 0;
     }
 }
 

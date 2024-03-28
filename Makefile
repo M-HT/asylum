@@ -4,7 +4,7 @@ HOST=generic
 
 CC=g++
 RM=rm
-CFLAGS= -O3
+CFLAGS= -O3 -Wall
 COPTS=  $(CFLAGS) -funsigned-char \
 	-DRESOURCEPATH=\"$(INSTALLRESOURCEPATH)\" \
 	-DSCOREPATH=\"$(INSTALLHISCORES)\"

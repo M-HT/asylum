@@ -2,7 +2,7 @@ HOST=generic
 #HOST=mingw
 #HOST=haiku
 
-CC=arm-none-linux-gnueabi-g++
+CC=pandora-g++
 RM=rm
 CFLAGS= -Os -DPANDORA -pipe -march=armv7-a -mcpu=cortex-a8 -mtune=cortex-a8 -mfpu=vfpv3 -mfloat-abi=softfp -I${PNDSDK}/usr/include -L${PNDSDK}/usr/lib
 COPTS=  $(CFLAGS) -funsigned-char -ffast-math

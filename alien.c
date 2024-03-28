@@ -93,15 +93,23 @@ void moval()
     alent* r11 = aladr;
     for (int r9 = _alno; r9 > 0; r9 -= 8)
     {
-       l8:
-        if (r11->type) procal(r11);r11++;
-        if (r11->type) procal(r11);r11++;
-        if (r11->type) procal(r11);r11++;
-        if (r11->type) procal(r11);r11++;
-        if (r11->type) procal(r11);r11++;
-        if (r11->type) procal(r11);r11++;
-        if (r11->type) procal(r11);r11++;
-        if (r11->type) procal(r11);r11++;
+       //l8:
+        if (r11->type) procal(r11);
+        r11++;
+        if (r11->type) procal(r11);
+        r11++;
+        if (r11->type) procal(r11);
+        r11++;
+        if (r11->type) procal(r11);
+        r11++;
+        if (r11->type) procal(r11);
+        r11++;
+        if (r11->type) procal(r11);
+        r11++;
+        if (r11->type) procal(r11);
+        r11++;
+        if (r11->type) procal(r11);
+        r11++;
     }
     return;
 }
@@ -110,21 +118,21 @@ void procal(alent* r11)
 {
     if ((r11->x <= xlowlim) || (xposmax <= r11->x) || (r11->y <= ylowlim) || (yposmax <= r11->y))
     {
-       aloffscr:
+       //aloffscr:
         if (r11->type != _Decoration)
         {
             r11->type = 0;
             return;
         }
     }
-   noaloffscr:
+   //noaloffscr:
     if ((r11->x >= sprlx) && (sprhx >= r11->x) && (r11->y >= sprly) && (sprhy >= r11->y))
         plotal = masterplotal;
     else plotal = 0;
     switch ((r11->type)&0x1f)
     {
-       aljumptab:
-       t:
+       //aljumptab:
+       //t:
     case 1: explo(r11); return;
     case 2: ember(r11); return;
     case 3: plat1(r11); return;
@@ -158,7 +166,7 @@ void procal(alent* r11)
     case 31: alien14(r11); return;
     case 0:;
     }
-   aljerr:
+   //aljerr:
     return;
 }
 
@@ -213,13 +221,13 @@ void alienstoppedfly(alent* r11)
 
     if ((r2&6) == 0)
     {
-       flyup:
+       //flyup:
         r11->dx = 0;
         r11->dy = -(1<<7);
     }
     else if ((r2&1) == 0)
     {
-       flyupdown:
+       //flyupdown:
         r11->dx = 0;
         r11->dy = (r2&(1<<9))-(1<<8);
     }
@@ -281,7 +289,7 @@ void extender(alent* r11)
     char f = r11->r5&0xff;
     if (r11->r5&(1<<8))
     {
-       contracting:
+       //contracting:
         if ((*r0 == f) || (*r0 == 0)) f = *r0 = 0;
         else if ((*r0 != f+1) && (*r0 != f+2) && !block_gas(*r0))
         {
@@ -299,7 +307,7 @@ void extender(alent* r11)
         }
     }
 
-   nostopextend:
+   //nostopextend:
     if (plotal == 0) return;
     r0 = fntranslate(r11->x+r11->dx*15, r11->y);
     f = r11->r5&0xff;
@@ -321,7 +329,7 @@ void init_alspintab()
 void alien1(alent* r11)
 {
     colcheck(r11, 2, r11->y-(8<<8));
-    char* r5 = albcheck(r11);
+    albcheck(r11);
     r11->x += r11->dx; r11->y += r11->dy;
 
     r11->dy += 1<<7; // gravity
@@ -437,7 +445,6 @@ void alien4(alent* r11)
 
     if (plotal == 0) return;
 
-    int x, y;
     relplot(alspradr, 2, r11->x, r11->y);
     relplot(alspradr, 4+((r11->r5>>24)&3), r11->x, r11->y-(7<<8));
     if (r11->r5&(1<<31)) return;
@@ -446,7 +453,7 @@ void alien4(alent* r11)
     int* r3 = alspintab+r0*2;
     for (int r4 = 4; r4 > 0; r4--)
     {
-       loop81:
+       //loop81:
         relplot(exploadr, _bulspritebase+((r4+f)&3), r11->x+r3[0], r11->y-(7<<8)+r3[1]);
         r3 += 8; // yes, that's 8 ints (32 bytes)
     }
@@ -483,7 +490,6 @@ void alien5(alent* r11)
 
     if (plotal == 0) return;
 
-    int x, y;
     relplot(alspradr, 2, r11->x, r11->y);
     relplot(alspradr, 4+((r11->r5>>24)&3), r11->x, r11->y-(7<<8));
     if (r11->r5&(1<<31)) return;
@@ -492,7 +498,7 @@ void alien5(alent* r11)
     int* r3 = alspintab+r0*2;
     for (int r4 = 4; r4 > 0; r4--)
     {
-       loop83:
+       //loop83:
         relplot(exploadr, _bulspritebase+8+((r4+f)&1), r11->x+r3[0], r11->y-(7<<8)+r3[1]);
         r3 += 8; // yes, that's 8 ints (32 bytes)
     }
@@ -528,7 +534,6 @@ void alien6(alent* r11)
 
     if (plotal == 0) return;
 
-    int x, y;
     relplot(alspradr, 3, r11->x, r11->y);
     relplot(alspradr, 4+((r11->r5>>24)&3), r11->x, r11->y-(7<<8));
     if (r11->r5&(1<<31)) return;
@@ -537,7 +542,7 @@ void alien6(alent* r11)
     int* r3 = alspintab+r0*2;
     for (int r4 = 4; r4 > 0; r4--)
     {
-       loop85:
+       //loop85:
         relplot(exploadr, _bulspritebase+10+((r4+f)&1), r11->x+r3[0], r11->y-(7<<8)+r3[1]);
         r3 += 8; // yes, that's 8 ints (32 bytes)
     }
@@ -550,7 +555,7 @@ int alspinfire(alent* r11)
 
     for (int r4 = 4; r4 > 0; r4--)
     {
-       loop82:
+       //loop82:
         makebul(r6[0]+r11->x, r6[1]+r11->y-(7<<8), r6[8]>>2, r6[9]>>2,
                 ((r4+r0)&3), (1<<8)*BULL_TTL);
         r6 += 8;
@@ -560,7 +565,7 @@ int alspinfire(alent* r11)
     if (r2 > 0x40)
         bidforsound(_Explochannel, _Sampsmallzap, r2, (fullpitch+0x1000) /*pitch*/,
                     0, 0, 2 /* lifetime (frames) */, (r6[1]-(7<<8))>>9, CHUNK_SPINFIRE);
-   nospinzapsound:
+   //nospinzapsound:
     return 0x80000100;
 }
 
@@ -571,7 +576,7 @@ int alspinpowerfire(alent* r11, int r7)
 
     for (int r4 = 4; r4 > 0; r4--)
     {
-       loop84:
+       //loop84:
         makebul(r6[0]+r11->x, r6[1]+r11->y-(7<<8), r6[8]>>2, r6[9]>>2,
                 8+(r7<<1), (1<<8)*BULL_TTL);
         r6 += 8;
@@ -581,7 +586,7 @@ int alspinpowerfire(alent* r11, int r7)
     if (r2 > 0x40)
         bidforsound(_Explochannel, _Sampbigzap, r2, fullpitch /*pitch*/,
                     0, 0, 2 /* lifetime (frames) */, (r6[1]-(7<<8))>>9, CHUNK_SPINPOWERFIRE);
-   nopowerzapsound:
+   //nopowerzapsound:
     return 0x80000040;
 }
 
@@ -714,7 +719,7 @@ void alien10(alent* r11)
 void alien11(alent* r11)
 {
     colcheck(r11, 1, r11->y-(8<<8));
-    char* r5 = albcheck(r11);
+    albcheck(r11);
     r11->x += r11->dx; r11->y += r11->dy; // no gravity
 
     alienwanderfly(r11);
@@ -742,7 +747,7 @@ void alien11(alent* r11)
 void alien12(alent* r11)
 {
     colcheck(r11, 1, r11->y-(8<<8));
-    char* r5 = albcheck(r11);
+    albcheck(r11);
     r11->x += r11->dx; r11->y += r11->dy; // no gravity
     r11->dx += r11->dx>>6; r11->dy += r11->dy>>6;
     if (r11->dx > _speedlim) r11->dx = _speedlim;
@@ -775,7 +780,7 @@ void alien12(alent* r11)
 void alien13(alent* r11)
 {
     colcheck(r11, 2, r11->y-(8<<8));
-    char* r5 = albcheck(r11);
+    albcheck(r11);
     r11->x += r11->dx; r11->y += r11->dy;
 
     if (r11->dy > (1<<11)) r11->dy = 1<<11;
@@ -802,7 +807,7 @@ void alien13(alent* r11)
 void alien14(alent* r11)
 {
     colcheck(r11, 1, r11->y-(8<<8));
-    char* r5 = albcheck(r11);
+    albcheck(r11);
     r11->x += r11->dx; r11->y += r11->dy;
 
     r11->dy++;
@@ -853,7 +858,7 @@ void alshoot(alent* r11)
 
     bidforsound(_Explochannel, _Sampsmallzap, 0x78, fullpitch+0x1000, // pitch
                 0, (fullpitch<<16)|0xfe00, 2 /* lifetime (frames) */, 0, CHUNK_SHOOT);
-   noshootsound:;
+   //noshootsound:;
 }
 
 void alshootfast(alent* r11)
@@ -971,11 +976,11 @@ void booby(alent* r11)
     char* r0 = fntranslate(r11->x+r11->dx, r11->y);
 
     if (embertrybombtarget(r0, r11)) return;
-   noboobybomb:
+   //noboobybomb:
     if (*r0 >= _blim) r11->dx = -(r11->dx>>1);
     r0 = fntranslate(r11->x+r11->dx, r11->y+r11->dy);
     if (embertrybooby(r0, r11)) return;
-   noboobybooby:
+   //noboobybooby:
     if (*r0 >= _blim) r11->dy = -(r11->dy>>1);
     r11->x += r11->dx;
     r11->y += r11->dy;
@@ -995,11 +1000,11 @@ void ember(alent* r11)
     char* r0 = fntranslate(r11->x+r11->dx, r11->y);
 
     if (embertrybomb(r0, r11)) return;
-   noemberbomb:
+   //noemberbomb:
     if (*r0 >= _blim) r11->dx = -(r11->dx>>1);
     r0 = fntranslate(r11->x+r11->dx, r11->y+r11->dy);
     if (embertrygas(r0, r11)) return;
-   noembergas:
+   //noembergas:
     if (*r0 >= _blim) r11->dy = -(r11->dy>>1);
     r11->x += r11->dx;
     r11->y += r11->dy;
@@ -1048,7 +1053,7 @@ void flyingbonus(alent* r11)
         {
             r11->dx = -r11->dx; r4 = 1;
         }
-   flyingskip:
+   //flyingskip:
     r0 = fntranslate(r11->x+r11->dx-(8<<8), r11->y+r11->dy-(8<<8));
     if ((*r0 >= _bonuslow) || (r0[1] >= _bonuslow))
         if (r11->dy <= 0)
@@ -1060,7 +1065,7 @@ void flyingbonus(alent* r11)
         {
             r11->dy = -r11->dy; r4 = 1;
         }
-   flyingvertskip:
+   //flyingvertskip:
     r0 = fntranslate(r11->x+r11->dx-(8<<8), r11->y+r11->dy-(8<<8));
     if ((*r0 >= _bonuslow) || (r0[boardwidth] >= _bonuslow))
         if (r11->dx <= 0)
@@ -1091,12 +1096,12 @@ void flyingbonus(alent* r11)
         r11->dx -= (r11->dx>>2);
         r11->dy -= (r11->dy>>2);
     }
-   flyingnoslow:
+   //flyingnoslow:
 
     r11->r5 -= (1<<16);
     if (r11->r5 < 0)
     {
-       bonusdowngrade:
+       //bonusdowngrade:
         r11->type = _Dyingbonus;
         r11->r5 = r11->r6|(1<<20);
     }
@@ -1268,7 +1273,6 @@ void bulcolchaddshort(alent* r11)
 void platland(alent* r11, char r9)
 {
     char* r0 = translate(r11->x, r11->y);
-    char r1 = *r0;
 
     if (*r0 >= _platblim) r0 -= boardwidth;
     if ((*(r0+boardwidth) != _extendno)
@@ -1306,14 +1310,15 @@ void switchcolch()
 
 alent* bulcolcheck(int x, int y)
 {
-   bulcolchins:
+   //bulcolchins:
     for (bulcolchent*r11 = bulcolchtab; r11 < bulcolchptr; r11++)
     {
-       bl10:
+       //bl10:
         if ((r11->xmax >= x) && (r11->ymax >= y) && (x >= r11->xmin) && (y >= r11->ymin))
-           bullethit: return r11->r0;
+           //bullethit:
+           return r11->r0;
     }
-   bulcolched:
+   //bulcolched:
     return NULL;
 }
 
@@ -1369,25 +1374,25 @@ void colcheck(alent* al, int colchecktype, int platypos)
     colchent* r11 = colchtabuse-1;
     while (1)
     {
-       colchcon:
-       colchins:
+       //colchcon:
+       //colchins:
         do
         {
-           l10:
+           //l10:
             r11++;
             if (r11 >= colchptruse)
-               colched:
+               //colched:
                 return;
         }
         while (!((r11->xmax >= xlo) && (r11->ymax >= ylo) && (xhi >= r11->xmin) && (yhi >= r11->ymin)));
         if ((r11->ymax-ylo >= (1<<8))     //lim for plat on head -> can move horiz.
             && (yhi-r11->ymin >= (3<<8))) //same for standing on plat
         {
-           limr2:
+           //limr2:
             if (r11->xmax > xhi) if (al->dx > 0) al->dx = 0;
             if (r11->xmin < xlo) if (al->dx < 0) al->dx = 0;
         }
-       nolimr2:
+       //nolimr2:
         if (((r11->xmax-xlo) >= (6<<8))      //margin for right on edge
             && ((xhi-r11->xmin) >= (6<<8)))  //ditto
         {
@@ -1403,13 +1408,14 @@ void rise(alent* r6, alent* al, int colchecktype, int platypos)
 {
     if (colchecktype == 2) //no rise
     {
-        dontrise: al->dy = 0; alonobj = 1; return;
+        //dontrise:
+        al->dy = 0; alonobj = 1; return;
     }
     int r0 = r6->type;
     if (r0 == _Fastplatfire) platfire(r6);
     if ((r0 == _Downplat) || (r0 == _Fallplat)) //plat type 5 falls
     {
-       platfall:
+       //platfall:
         if (r0 == _Fallplat) r0 = r6->dy;else r0 = (1<<4)+r6->dy;
         if (r0 < -(1<<5)) r0 += (1<<5); //plat is moving up - more speed
         if (r0 > (1<<11)) r0 = 1<<11;
@@ -1435,21 +1441,21 @@ void rise(alent* r6, alent* al, int colchecktype, int platypos)
     if (r0 < -(3<<10))
     {
         r0 = -(3<<10);
-       platmaxspeed:
+       //platmaxspeed:
         if (r6->type == _Fastplatstop)
         {
-           platstop:
+           //platstop:
             platsurefire(r6);
             r0 = -(1<<9);
         }
         else if ((r6->type == _Fastplatexplo) || (r6->type == _Fastplatfire))
         {
-           platexplo:
+           //platexplo:
             platdestroy(r6);
             return;
         }
     }
-   platmaxspeedins:;
+   //platmaxspeedins:;
 
     r6->dy = r0;
     if (al->dy >= r0) al->dy = r0;
@@ -1479,7 +1485,7 @@ void platonhead(alent* r6, alent* al, int colchecktype)
     // platuphit = 1; seems useless
     if (al->dy < 0) al->dy = 0;
     if (al->falling == 0xff) // only meaningful when colchecktype == 0
-       platsandwich:
+       //platsandwich:
         if ((colchecktype == 0) && (platsandstr != NULL)) *platsandstr = (1<<8);
 } //B colchcon
 
@@ -1496,7 +1502,7 @@ void platfire(alent* r6)
     if ((r4&(3<<24)) == 0) // firing rate
         makebul(r6->x, r6->y+(16<<8), (r4&(0xfe<<2))-(0xfe<<1), -((r4&(0xfe<<12))>>11),
                 8, (1<<8)*BULL_TTL);
-   platfireskip:
+   //platfireskip:
     return;
 }
 
@@ -1521,14 +1527,14 @@ int headonroof(alent* r6, alent* al, int colchecktype, int platypos)
     {
         if ((random()&7) == 0)
             dodgypointer->y = (random()&(1<<9))-(1<<8);
-       skipalrandload:
+       //skipalrandload:
         r0 = 1; r1 = 0;
     }
     else
     {
         r0 = 1<<8; r1 = al->downpress;
     }
-   skipalrand:
+   //skipalrand:
     r6->y = platypos+(32<<8); //force plat to player pos
     if (r1 > 64) r0 = 1<<11;
     if (r6->type == _Updownplat) r6->type = _Downplat;
@@ -1568,7 +1574,7 @@ char* albcheck(alent* r11)
     }
     else
     {
-       alshort:
+       //alshort:
         z = translate(xtemp+r11->dx, ytemp);
         if ((*z >= _blim) || (*(z+boardwidth) >= _blim))
             noleft(r11);
@@ -1577,7 +1583,7 @@ char* albcheck(alent* r11)
             noright(r11);
     }
 
-   albcheckins:
+   //albcheckins:
     z = translate(xtemp+r11->dx, ytemp+r11->dy);
 // up
     if ((*(z-boardwidth) >= _blim) || (*(z-boardwidth+1) >= _blim))
@@ -1617,10 +1623,10 @@ int fallinggap(alent* re)
 
     if ((*(r11+r1) < _blim) && (*(r11+boardwidth+r1) < _blim))
     {
-       stopfall:
+       //stopfall:
         if (re->dy > 0)
         {
-           stopfalldown:
+           //stopfalldown:
             if (*(r11-boardwidth+r1) < _blim) return 0;
             if (*(r11+boardwidth*2+r1) < _blim) return 0;
             if (*(r11+boardwidth*2+(1-r1)) < _blim)
@@ -1630,7 +1636,7 @@ int fallinggap(alent* re)
         }
         else if (re->dy < 0)
         {
-           stopfallup:
+           //stopfallup:
             if ((ytemp&(15<<8)) > (8<<8)) return 0;
             if (*(r11-boardwidth+r1) < _blim) return 0;
             if (*(r11+boardwidth*2+r1) < _blim) return 0;
@@ -1650,7 +1656,7 @@ void nodown(alent* r11)
         r11->dy = ((15<<8)&((16<<8)-ytemp))-1;
         if (r11->dy < 0) r11->dy = 0;
     }
-   nodownrel:
+   //nodownrel:
     r11->downhit = 1;
 }
 
@@ -1691,7 +1697,7 @@ void wipealtab()
     alctr = 0;
     for (int r9 = _alno; r9 >= 0; r9--)
     {
-       l9:
+       //l9:
         r10->type = 0;
         r10++;
     }
@@ -1750,7 +1756,7 @@ void explocreate(int r1, int r2, int r3, int r4, int r5, int r6, alent* r10)
                     0x3800, 0, 0, 10, ((r1-xpos)>>9), CHUNK_EXPLO);
         //pitch, , ,lifetime (frames)
     }
-   noexplosound:
+   //noexplosound:
     explocreatequiet(r1, r2, r3, r4, r5, r6, r10);
 }
 
@@ -1758,7 +1764,7 @@ void explocreate(int r1, int r2, int r3, int r4, int r5, int r6, alent* r10)
 void explocreatequiet(int r1, int r2, int r3, int r4, int r5, int r6, alent* r10)
 {
     if (r10 == NULL) //(r10<8)
-       noobject:
+       //noobject:
         softmakeobj(_Explo, r1, r2+(8<<8), r3, r4, (r5 != 0) ? (1<<15) : 0, r6);
     else
     {
@@ -1766,7 +1772,7 @@ void explocreatequiet(int r1, int r2, int r3, int r4, int r5, int r6, alent* r10
         r10->dx = r3; r10->dy = r4;
         r10->r5 = 0;
     }
-   noobjectins:;
+   //noobjectins:;
 }
 
 void embercreate(int r1, int r2, int r6)
@@ -1790,7 +1796,7 @@ void atomexplogo(int r1, int r2, int r3, int r4, int r5, int r6, alent* r10)
     if (r1 >= 60)
 /* AND R2,R1,#&7F:MOV R2,#&7F ??? */
         bidforsound(_Explochannel, _SampAtomExplo, 0x7f, 0x2800, 0, 0, 50, r7, CHUNK_ATOM);
-   noatomsound:
+   //noatomsound:
     return;
 }
 
@@ -1801,7 +1807,7 @@ void save_alents(uint8_t store[_savearealen*28])
     alent* al = aladr;
     for (int r9 = _alno; r9 > 0; r9--)
     {
-       procsaveal:
+       //procsaveal:
         if (st >= st_end) break;
         switch (al->type)
         {
@@ -1834,7 +1840,7 @@ void restore_alents(uint8_t store[_savearealen*28])
     uint8_t* st_end = st+(_savearealen-1)*28;
     for (; (read_littleendian(st) != 0xffffffff) && (st < st_end);)
     {
-       sl1:
+       //sl1:
         al->type = read_littleendian(st);
         al->x = read_littleendian(st+4);
         al->y = read_littleendian(st+8);
@@ -1862,7 +1868,7 @@ int softmakeobj(int r0, int r1, int r2, int r3, int r4, int r5, int r6)
     else r10 += alctr;
     do
     {
-       softloop:
+       //softloop:
         if (r10->type == 0) return foundmakeal(r10, alctr, r0, r1, r2, r3, r4, r5, r6);
         r10++;
         alctr++;
@@ -1882,7 +1888,7 @@ int makeobj(int r0, int r1, int r2, int r3, int r4, int r5, int r6)
     r10 += tmpalctr;
     do
     {
-       loop52:
+       //loop52:
         if (r10->type == 0) return foundmakeal(r10, tmpalctr, r0, r1, r2, r3, r4, r5, r6);
         r10++;
         tmpalctr++;
@@ -1892,7 +1898,7 @@ int makeobj(int r0, int r1, int r2, int r3, int r4, int r5, int r6)
     r9 = alctr;
     do
     {
-       loop53:
+       //loop53:
         if (r10->type == 0) return foundmakeal(r10, tmpalctr, r0, r1, r2, r3, r4, r5, r6);
         r10++;
         tmpalctr++;

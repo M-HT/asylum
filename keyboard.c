@@ -142,7 +142,7 @@ char swi_oscrc(int w, char* start, char* end, int bytes)
 
 int swi_joystick_read(int a, int* x, int* y)
 {
-    ;
+    return 0;
 }
 
 void update_keyboard()
@@ -448,7 +448,7 @@ void keyread(key_state* ks)
         int v = swi_joystick_read(options.joyno-1, &r0, &r1);
         if (v)
         {
-           nostickerr:
+           //nostickerr:
             message(32, 32, 0, 1, "Can't see a joystick!");
             r4 = -1;
             options.joyno = 0;
@@ -474,7 +474,7 @@ void keyread(key_state* ks)
    BICNE R4,R4,#4; up on fire button 2
  */
     }
-   nojoystick:
+   //nojoystick:
     if ((osbyte_81(options.leftkey) == 0xff) || !(r4&1))
       { if (++ks->leftpress == 0) ks->leftpress = 0xff;}
     else ks->leftpress = 0;

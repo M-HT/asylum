@@ -51,7 +51,7 @@ int escapehandler()
     osbyte_7c(); //clear escape
     for (int r9 = 64; swi_readescapestate() == 0;)
     {
-       loopb8:
+       //loopb8:
         swi_blitz_wait(0);
         if (r9 != 0)
         {
@@ -136,7 +136,8 @@ int options_menu(int gameon)
         swi_blitz_wait(20); //
         switch (readopt((gameon == 0) ? 3 : 3))
         {
-        case -1: optionexit: return 1;
+        case -1: //optionexit:
+            return 1;
         case  1: choosecontrol(); dosaveconf(); break;
         case  2: tunegame(); dosaveconf(); break;
         case  3: if (gameon == 0)
@@ -202,7 +203,7 @@ void getzone()
 
 void completedzone()
 {
-   completedzone:
+   //completedzone:
     message(114, 64, 0, 0, "WELL DONE!");
     message(44, 96, 0, 0, "You have completed");
     if (options.mentalzone == 3) message(114, 128, 0, 0, "The game!!!");
@@ -353,7 +354,7 @@ void tunesound()
     showchatscreen();
     for (;; /*tunesoundloop:*/ soundupdate(), swi_stasis_link(1, 1), swi_sound_control(1, -15, 0x20, 0xfe))
     {
-       tunesoundins:
+       //tunesoundins:
         wipetexttab();
         soundfillin();
         message(96, 32, 0, 0, "Tune Sound");
@@ -434,7 +435,7 @@ void tunevolume()
 #endif
     do
     {
-       tunevolumeloop:
+       //tunevolumeloop:
         swi_bodgemusic_volume(options.musicvol);
         if (swi_sound_speaker(0)) *tunevol1 = 17;
         else *tunevol1 = 16;
@@ -497,7 +498,7 @@ void tunespeed()
         showchatscreen();
         do
         {
-           tunespeedloop:
+           //tunespeedloop:
             wipetexttab();
             if (options.fullscreen == 1) speed1[0] = 16;
             else speed1[0] = 17;
@@ -599,18 +600,18 @@ int readopt(int maxopt)
 
     for (;;)
     {
-       keyloop:
+       //keyloop:
         if (options.joyno != 0)
         {
             swi_joystick_read(options.joyno-1, NULL, NULL);
 // MOVVS R0,#0
 //if (r0&(1<<16)) {/*optfire:*/ return 0;}
         }
-       nooptstick:
+       //nooptstick:
         r1 = osbyte_79_unicode(1); // read key in time limit
         if (swi_readescapestate())
         {
-           optescape:
+           //optescape:
             osbyte_7c(); // clear escape
             return -1;
         }
@@ -676,7 +677,7 @@ int prelude()
     showtext();
     for (int scroll = 256+8; swi_readescapestate() == 0;)
     {
-       loope0:
+       //loope0:
         swi_blitz_wait(2);
         if (scroll != 0)
         {
@@ -690,14 +691,14 @@ int prelude()
             showchatscreen();
             showtext();
         }
-       preludetextstop:;
+       //preludetextstop:;
         int r1 = osbyte_7a();
         if ((r1 != -1) && (r1 != 307) && (r1 != 308)) // escape
-           endprelude:
+           //endprelude:
             return cheatpermit;
         if (readmousestate()&2)
         {
-           gocheat:
+           //gocheat:
             if (osbyte_81(-SDLK_LALT) != 0xff) return cheatpermit;
             if (osbyte_81(-SDLK_RALT) != 0xff && osbyte_81(-SDLK_MODE) != 0xff) return cheatpermit;
             cheatpermit = 1;
@@ -798,13 +799,13 @@ void showerrorok()
 int errorwait()
 {
     if (osbyte_81(-74) != 0xff)
-       loopb9:
+       //loopb9:
         while (osbyte_81(-61) != 0xff)
             if (swi_readescapestate())
             {
                 wipetexttab(); return 0;
             }
-   waitover:
+   //waitover:
     wipetexttab();
     return 1;
 }
@@ -817,10 +818,11 @@ void setdefaultscores()
 
     for (int r3 = 5; r3 > 0; r3--)
     {
-       loopd4:;
+       //loopd4:;
         const char* r11 = defscore;
         for (int r2 = 13; r2 > 0; r2--)
-           loopd5: *(r10++) = *(r11++);
+           //loopd5:
+           *(r10++) = *(r11++);
     }
 }
 
@@ -847,11 +849,11 @@ void updatehst()
     r10 += 4*13; //4*entry length
     while (comparescore(r10))
     {
-       loopd1:
+       //loopd1:
         r10 -= 13; //entry length
         if (--hstindex == 0) break;
     }
-   lessthan:
+   //lessthan:
     r10 += 13; //entry length
     if (hstindex != 5)
     {
@@ -860,14 +862,14 @@ void updatehst()
             char* r9;
             int r3;
             for (r9 = highscorearea+4*13-1, r3 = 13*(4-hstindex); r3 > 0; r9--, r3--)
-               loopd7:
+               //loopd7:
                 r9[13] = *r9;
         }
-       noshiftscore:;
+       //noshiftscore:;
 
         char* r11 = plscore;
         for (int r3 = 8; r3 > 0; r3--)
-           loopda:
+           //loopda:
             *(r10++) = *(r11++)+'0';
 
         r10++;
@@ -883,7 +885,7 @@ void updatehst()
             while (osbyte_81(0) != -options.firekey)
 #endif
             {
-               scorekeyloop:
+               //scorekeyloop:
 //if (--r9<0) goto scoreexit;
                 keyread(&ks);
                 if (ks.leftpress == 0)
@@ -905,11 +907,11 @@ void updatehst()
             swi_sound_control(1, 0x17c, 140, 0);
             /*if (r8>1)*/ swi_blitz_wait(20);
         }
-       scoreexit:
+       //scoreexit:
         savescores(highscorearea, options.mentalzone);
         dosaveconf();
     }
-   notontable:;
+   //notontable:;
 }
 
 
@@ -919,11 +921,13 @@ int comparescore(char* r10)
 
     for (int r3 = 8; r3 > 0; r3--)
     {
-       loopd0:
-        if (*r10-'0' < *r11) scoregreater: return 1;
-        else if (*r10-'0' > *r11) scoreless: return 0;
+       //loopd0:
+        if (*r10-'0' < *r11) //scoregreater:
+            return 1;
+        else if (*r10-'0' > *r11) //scoreless:
+            return 0;
         r10++; r11++;
-       compnext:;
+       //compnext:;
     }
     return 1;
 }
